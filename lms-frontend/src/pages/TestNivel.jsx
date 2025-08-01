@@ -1,4 +1,4 @@
-import { useTestNivel } from "../hooks/useTestNivel";
+import useTestnivel from "../hooks/useTestnivel";
 import { BookText, ChevronRight } from "lucide-react";
 import logo from "../assets/loog.png";
 import { Phone, X } from "lucide-react";
@@ -16,7 +16,7 @@ export default function TestNivel() {
     loading,
     total,
     current,
-  } = useTestNivel();
+  } = useTestnivel();
 
   if (loading) return <div className="text-center py-10">Cargando...</div>;
 

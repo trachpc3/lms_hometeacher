@@ -4,6 +4,7 @@ import pool from "../models/db.js";
 export const getUnidadesConProgreso = async (req, res, next) => {
   const { nivel } = req.query;
   const userId = req.user?.id;
+  const userRol = req.user?.rol;
 
   if (!nivel) {
     return res.status(400).json({ success: false, message: "Falta el parámetro 'nivel'" });
@@ -16,13 +17,16 @@ export const getUnidadesConProgreso = async (req, res, next) => {
       [userId]
     );
 
-    // 🔒 Restricción para cuentas demo
-    if (estado_formacion === "demo" && nivel !== "Beginners") {
+    // ✅ Permitir acceso total a administradores
+    if (userRol === "administrador") {
+      console.log("🛡️ Acceso autorizado: administrador");
+    }
+    // 🔒 Restringir demo solo a nivel Beginners
+    else if (estado_formacion === "demo" && nivel !== "Beginners") {
       return res.status(403).json({ message: "Acceso restringido para cuenta demo" });
     }
-
-    // 🔓 Verificación de matrícula activa si está matriculado
-    if (estado_formacion === "matriculado") {
+    // 🔓 Verificación de matrícula activa
+    else if (estado_formacion === "matriculado") {
       const [matriculas] = await pool.query(
         "SELECT id FROM matriculas WHERE alumno_id = ? AND nivel_id = ? AND estado = 'activa'",
         [userId, nivel]
@@ -60,6 +64,7 @@ export const getUnidadesConProgreso = async (req, res, next) => {
 export const getUnidadById = async (req, res, next) => {
   const { unitId } = req.params;
   const userId = req.user?.id;
+  const userRol = req.user?.rol;
 
   try {
     const [[{ estado_formacion }]] = await pool.query(
@@ -77,13 +82,15 @@ export const getUnidadById = async (req, res, next) => {
       return res.status(404).json({ message: "Unidad no encontrada" });
     }
 
-    // Si es demo, solo permitir acceso a la unidad 1 del nivel Beginners
-    if (estado_formacion === "demo") {
+    // 🔒 Restricción para cuentas demo
+    if (userRol !== "administrador" && estado_formacion === "demo") {
       if (!(unidad.nivel === "Beginners" && unidad.id === 1)) {
         console.warn(`🚫 Demo sin acceso: unidad ${unidad.id} del nivel ${unidad.nivel}`);
         return res.status(403).json({ message: "Acceso restringido para cuenta demo" });
       }
     }
+
+    // ✅ Permitir acceso sin restricciones a administradores
 
     // Obtener el título de la unidad
     const [rows] = await pool.query(

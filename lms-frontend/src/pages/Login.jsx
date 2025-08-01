@@ -124,9 +124,10 @@ const Login = () => {
         className="hidden md:flex w-2/3 h-full bg-cover bg-center items-center px-20"
         style={{ backgroundImage: "url('/landing1.jpg')" }}
       >
-        <h1 className="text-white text-5xl font-bold leading-tight">
-          Bienvenido a <br /> HomeTeacher <br />
-          tu academia de inglés online.
+        <h1 className="text-white text-5xl font-bold leading-tight"><br /><br /><br /><br /><br /><br /><br />
+
+          Bienvenido a       <p>    </p> HomeTeacher <br />
+          Tu academia de inglés online
         </h1>
       </div>
 

@@ -21,7 +21,7 @@ export const getProductiveSkillsActividadByUnidad = async (req, res) => {
   const { unitId } = req.params;
 
   try {
-    const [rows] = await db.query(
+    const [rows] = await pool.query(
       "SELECT * FROM actividades WHERE unidad_id = ? AND tipo = 'ProductiveSkills' LIMIT 1",
       [unitId]
     );
@@ -40,7 +40,7 @@ export const getProductiveSkillsActividadByUnidad = async (req, res) => {
 export const getProductiveSkillsPrompts = async (req, res) => {
   const { unitId } = req.params;
   try {
-    const [rows] = await db.query(
+    const [rows] = await pool.query(
       "SELECT tipo, descripcion FROM productive_skills WHERE unidad_id = ?",
       [unitId]
     );

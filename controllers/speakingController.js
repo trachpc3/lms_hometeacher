@@ -1,10 +1,10 @@
-import db from "../models/db.js";
+import pool from "../models/db.js";
 
 export const getSpeakingByActividad = async (req, res) => {
   const { actividadId } = req.params;
 
   try {
-    const [dialogue] = await db.query(
+    const [dialogue] = await pool.query(
       `SELECT * FROM speaking_dialogues WHERE actividad_id = ?`,
       [actividadId]
     );
@@ -13,7 +13,7 @@ export const getSpeakingByActividad = async (req, res) => {
       return res.status(404).json({ message: "No se encontró el diálogo" });
     }
 
-    const [lines] = await db.query(
+    const [lines] = await pool.query(
       `SELECT speaker, texto, audio_url, line_order FROM speaking_lines WHERE dialogue_id = ? ORDER BY line_order ASC`,
       [dialogue[0].id]
     );

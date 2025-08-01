@@ -1,6 +1,9 @@
-// src/context/UserContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
-import { getUserFromLocalStorage } from "../hooks/useUser";
+import {
+  getUserFromLocalStorage,
+  saveUserToLocalStorage,
+  clearUserFromLocalStorage,
+} from "../hooks/useUser";
 
 export const UserContext = createContext();
 
@@ -12,12 +15,22 @@ export const UserProvider = ({ children }) => {
     setUser(userData || {});
   };
 
+  const logout = () => {
+    clearUserFromLocalStorage();
+    setUser({});
+  };
+
+  const login = (userData) => {
+    saveUserToLocalStorage(userData);
+    setUser(userData);
+  };
+
   useEffect(() => {
     refreshUser();
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, setUser, refreshUser }}>
+    <UserContext.Provider value={{ user, setUser, refreshUser, login, logout }}>
       {children}
     </UserContext.Provider>
   );

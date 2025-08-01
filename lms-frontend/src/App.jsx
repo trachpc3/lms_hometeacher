@@ -8,6 +8,7 @@ import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Pricing from "./pages/Pricing";
+import TestNivel from "./pages/TestNivel";
 import UnitDashboard from "./pages/UnitDashboard";
 import Situation from "./pages/Situation";
 import Vocabulary from "./pages/Vocabulary";
@@ -36,6 +37,8 @@ const router = createBrowserRouter(
     { path: "/", element: <Login /> },
     { path: "/home", element: <Home /> },
     { path: "/pricing", element: <Pricing /> },
+    { path: "/test-nivel", element: <TestNivel /> },
+
     { path: "/perfil", element: <ProfilePage /> },
 
     {

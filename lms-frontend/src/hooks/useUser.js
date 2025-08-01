@@ -1,4 +1,3 @@
-// src/hooks/useUser.js
 export const getUserFromLocalStorage = () => {
   const storedUser = localStorage.getItem("user");
   if (!storedUser) return null;
@@ -23,4 +22,8 @@ export const getUserFromLocalStorage = () => {
 
 export const saveUserToLocalStorage = (user) => {
   localStorage.setItem("user", JSON.stringify(user));
+};
+
+export const clearUserFromLocalStorage = () => {
+  localStorage.removeItem("user");
 };

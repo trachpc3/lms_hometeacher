@@ -1,17 +1,20 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api";
+// Crea una instancia
+const api = axios.create({
+  baseURL: "http://localhost:5000/api",
+  headers: {
+    "Cache-Control": "no-cache",
+  },
+});
 
-export const getUnidades = async () => {
-  const response = await axios.get(`${API_URL}/unidades`, {
-    headers: { "Cache-Control": "no-cache" }, // 👀 Forzar que no use caché
-  });
-  return response.data;
-};
+// ➕ Interceptor para agregar token automáticamente
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-export const getUnidadById = async (id) => {
-  const response = await axios.get(`${API_URL}/unidades/${id}`, {
-    headers: { "Cache-Control": "no-cache" }, // 👀 Evitar que el navegador use la versión en caché
-  });
-  return response.data;
-};
+export default api;

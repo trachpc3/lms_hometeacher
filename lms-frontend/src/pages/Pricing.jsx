@@ -21,25 +21,25 @@ const Pricing = () => {
     const monthlyPlans = [
         {
             name: "Nivel B1",
-            price: "56,25 €",
-            oldPrice: 950,
-            finalPrice: 600,
-            features: ["72 unidades", "Up to 1,000 subscribers", "Basic analytics", "48-hour support response time"]
+            price: "84,25 €",
+            oldPrice: 1300 ,
+            finalPrice: 900,
+            features: ["72 unidades", "12 meses de Tutorización",  "Consultas ilimitadas por tutoría", "Palabras aprendidas: 2428"]
         },
         {
             name: "Nivel B1+B2",
-            price: "70,25 €",
+            price: "60,49 €",
             oldPrice: 1600,
-            finalPrice: 750,
+            finalPrice: 1200,
             mostPopular: true,
-            features: ["144 unidades", "Unlimited subscribers", "Advanced analytics", "1-hour dedicated support"]
+            features: ["144 unidades", "24 meses de Tutorización", "Consultas ilimitadas por tutoría", "Palabras aprendidas: 4518"]
         },
         {
             name: "Nivel B2",
-            price: "56,25 €",
-            oldPrice: 950,
-            finalPrice: 750,
-            features: ["72 unidades", "Up to 1,000 subscribers", "Basic analytics", "48-hour support response time"]
+            price: "84,25 €",
+            oldPrice: 1300,
+            finalPrice: 900,
+            features: ["72 unidades", "12 meses de Tutorización", "Consultas ilimitadas por tutoría", "Palabras aprendidas: 2090"]
         }
     ];
 
@@ -109,7 +109,7 @@ const Pricing = () => {
 
             {/* Botones normales */}
             <div className="mt-10 flex gap-3 justify-center">
-    <button
+    {/* <button
         onClick={() => setCurrentMode("monthly")}
         className={`px-6 py-2 rounded-md text-sm font-semibold transition ${
             currentMode === "monthly"
@@ -118,7 +118,7 @@ const Pricing = () => {
         }`}
     >
         Anual
-    </button>
+    </button> */}
 
     {/* <button
         onClick={() => setCurrentMode("yearly")}
@@ -158,11 +158,12 @@ const Pricing = () => {
                                         <span className="text-sm"> / {currentMode === "monthly" ? "mes" : "año"}</span>
                                     </p>
 
-                                    {discount && (
-                                        <span className="text-green-600 font-bold text-xs bg-green-100 px-2 py-1 rounded">
-                                            -{discount}%
-                                        </span>
-                                    )}
+                                   {discount && (
+    <span className="text-green-600 font-bold text-xs bg-green-100 px-2 py-1 rounded">
+        {plan.mostPopular ? "24 meses" : "12 meses"}
+    </span>
+)}
+
                                 </div>
 
                                 {discount && (

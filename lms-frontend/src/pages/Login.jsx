@@ -1,6 +1,7 @@
+import { GOOGLE_CLIENT_ID } from "../config";
+import { API_BASE_URL } from '../config';
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { API_BASE_URL, GOOGLE_CLIENT_ID } from "../config";
 import logo from "../assets/loog.png";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import { toast } from "react-hot-toast";

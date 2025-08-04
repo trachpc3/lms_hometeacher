@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { levels } from "../data/levelsData";
 
 // ✅ Esta función simplemente valida si el nombre existe
@@ -20,7 +21,7 @@ export const fetchUnits = async (levelIdOrName) => {
   try {
     console.log("📡 Solicitando unidades para:", levelName);
 
-    const response = await fetch(`http://localhost:5000/api/unidades?nivel=${encodeURIComponent(levelName)}`, {
+    const response = await fetch(`${API_BASE_URL}/unidades?nivel=${encodeURIComponent(levelName)}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },

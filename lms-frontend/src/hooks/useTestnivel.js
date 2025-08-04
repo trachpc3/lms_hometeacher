@@ -3,7 +3,7 @@ import { getTestQuestions, submitTestResult } from "../services/testnivelService
 
 const niveles = ["A1", "A2", "B1", "B2"];
 
-export const useTestNivel = () => {
+  const useTestnivel = () => {
   const [nivelIndex, setNivelIndex] = useState(0);
   const [preguntas, setPreguntas] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -97,3 +97,5 @@ export const useTestNivel = () => {
     total: preguntas.length,
   };
 };
+
+export default useTestnivel;

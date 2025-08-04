@@ -2,7 +2,10 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import "dotenv/config";
+
 import { verifyToken } from "./middlewares/authMiddleware.js";
+
+// ✅ Servir archivos subidos
 import { serveUploads } from "./middlewares/serverUploads.js";
 
 // ✅ Rutas
@@ -28,31 +31,24 @@ import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
 import testnivelRoutes from "./routes/testnivelRoutes.js"; // ✅ Agregado
 
 const app = express();
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
-// ✅ CORS
-app.use(
-  cors({
-    origin: FRONTEND_ORIGIN,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "cache-control"], // 👈 Incluido
-    credentials: true,
-  })
-);
+// ✅ Lista de orígenes permitidos
 
-// ✅ Headers CORS manuales (por si Vite requiere preflight más explícito)
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control"); // 👈 Incluido
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-});
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://86.109.171.91:4173",
+  "https://nuevohome.campusvirtualhometeacher.es",
+];
 
-// ✅ Preflight (OPTIONS)
-app.options("*", (req, res) => {
-  res.sendStatus(200);
-});
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 
 // ✅ JSON Body Parser
 app.use(express.json({ limit: "50mb" }));
@@ -85,13 +81,13 @@ app.use("/api/actividades", actividadesRoutes);
 app.use("/api/productive-skills", productiveSkillsRoutes);
 app.use("/api/testnivel", testnivelRoutes); // ✅ Ruta del test
 
-// ✅ Error handler
+// ✅ Error handler genérico
 app.use((err, req, res, next) => {
   console.error("💥 Error interno:", err);
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-// ✅ Mostrar rutas registradas (debug)
+// ✅ Mostrar rutas registradas en consola
 app._router.stack.forEach((r) => {
   if (r.route && r.route.path) {
     console.log(`🔹 Ruta registrada: ${r.route.path}`);
@@ -100,4 +96,6 @@ app._router.stack.forEach((r) => {
 
 // ✅ Iniciar servidor
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Servidor corriendo en http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+});

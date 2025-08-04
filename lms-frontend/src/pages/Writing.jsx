@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Loader2, HelpCircle } from "lucide-react";
@@ -22,7 +23,7 @@ const Writing = () => {
     setLoading(true);
     setFeedback("");
     try {
-      const response = await axios.post("http://localhost:5000/api/writing/correct-writing", { text });
+      const response = await axios.post("${API_BASE_URL}/writing/correct-writing", { text });
       setFeedback(response.data.correctedText);
     } catch (error) {
       setFeedback("Error al corregir el texto. Inténtalo de nuevo más tarde.");

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, HelpCircle } from "lucide-react";
@@ -17,7 +18,7 @@ const Speaking = () => {
 useEffect(() => {
   const fetchActividadId = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/actividades/unidad/${unitId}/speaking`);
+      const res = await fetch(`${API_BASE_URL}/actividades/unidad/${unitId}/speaking`);
       
       const contentType = res.headers.get("content-type");
       if (!res.ok) {

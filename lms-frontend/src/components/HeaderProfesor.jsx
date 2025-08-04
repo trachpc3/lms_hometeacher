@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState } from "react";
 import { HelpCircle, Menu, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -44,8 +45,8 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
                                     user?.imagen && user.imagen !== "default-profile.jpg"
                                         ? user.imagen.startsWith("http") 
                                             ? user.imagen 
-                                            : `http://localhost:5000/${user.imagen}`
-                                        : "http://localhost:5000/uploads/default-profile.jpg"
+                                            : `${API_BASE_URL}/${user.imagen}`
+                                        : "${API_UPLOADS_URL}/default-profile.jpg"
                                 }
                                 alt="User"
                                 className="w-full h-full object-cover"

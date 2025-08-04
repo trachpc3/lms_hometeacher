@@ -1,5 +1,5 @@
+import { API_BASE_URL } from '../../config';
 import { useState, useEffect, useRef } from "react";
-import { API_BASE_URL } from "../../config";
 
 const RolePlay = ({ actividadId }) => {
   const [dialogue, setDialogue] = useState(null);

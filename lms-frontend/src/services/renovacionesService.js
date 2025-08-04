@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../config.js"; // ✅ Asegurar que la ruta sea correcta
+import { API_BASE_URL } from '../config';
 
 // 🔹 Obtener alumnos con matrícula próxima a vencer (15 días restantes)
 export const fetchRenovaciones = async () => {

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Home } from "lucide-react";
@@ -61,7 +62,7 @@ const UnitDashboard = () => {
     const fetchUnitTitle = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch(`http://localhost:5000/api/unidades/${unitId}`, {
+        const response = await fetch(`${API_BASE_URL}/unidades/${unitId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

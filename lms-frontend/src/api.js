@@ -1,14 +1,13 @@
 import axios from "axios";
 
-// Crea una instancia
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://86.109.171.91:3001/api", // 🔁 IP real del backend
   headers: {
     "Cache-Control": "no-cache",
   },
+  withCredentials: true, // ✅ importante si usas cookies o sesiones
 });
 
-// ➕ Interceptor para agregar token automáticamente
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {

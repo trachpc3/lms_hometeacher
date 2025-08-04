@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -77,7 +78,7 @@ const Practice = () => {
   useEffect(() => {
     const fetchSentences = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/sentences/${unitId}`);
+        const response = await fetch(`${API_BASE_URL}/sentences/${unitId}`);
         const data = await response.json();
         setSentences(data);
       } catch (error) {

@@ -1,7 +1,7 @@
+import { API_BASE_URL } from '../../config';
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { getUserFromLocalStorage } from "../../hooks/useUser";
-import { API_BASE_URL } from "../../config";
 
 const COLORS = ["#10B981", "#EF4444"];
 

@@ -1,6 +1,6 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../config";
 import logo from "../assets/loog.png";
 
 const ResetPassword = () => {

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -19,7 +20,7 @@ const Listening = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/listening/${unitId}`);
+        const response = await fetch(`${API_BASE_URL}/listening/${unitId}`);
         const data = await response.json();
         setQuiz(data);
       } catch (error) {

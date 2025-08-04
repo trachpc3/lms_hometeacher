@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, HelpCircle, X } from "lucide-react";
@@ -13,7 +14,7 @@ const Grammar = () => {
   useEffect(() => {
     const fetchGrammarData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/grammar/${unitId}`);
+        const response = await fetch(`${API_BASE_URL}/grammar/${unitId}`);
         const data = await response.json();
         setVideoUrl(data.video_url);
       } catch (error) {

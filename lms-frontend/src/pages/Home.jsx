@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock, Unlock, Menu } from "lucide-react";
 import toast from "react-hot-toast";
+import { API_BASE_URL } from "../config.js";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -91,7 +92,7 @@ const HomePage = () => {
 
   const cargarProgreso = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/progress/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/progress/${userId}`);
       if (!response.ok) throw new Error("Error al obtener progreso");
 
       const data = await response.json();

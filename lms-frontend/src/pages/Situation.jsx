@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, HelpCircle } from "lucide-react";
@@ -13,7 +14,7 @@ const Situation = () => {
   useEffect(() => {
     const fetchSituation = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/situations/${unitId}`);
+        const response = await fetch(`${API_BASE_URL}/situations/${unitId}`);
         if (!response.ok) throw new Error(`Error en la API: ${response.status}`);
 
         const data = await response.json();

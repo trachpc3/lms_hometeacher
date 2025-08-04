@@ -1,6 +1,6 @@
+import { API_BASE_URL } from '../config';
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../config";
 import logo from "../assets/loog.png";
 import { CheckCircle, GraduationCap, CreditCard } from "lucide-react";
 import toast from "react-hot-toast";

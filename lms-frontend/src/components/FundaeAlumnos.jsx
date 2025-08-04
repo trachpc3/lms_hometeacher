@@ -1,5 +1,5 @@
+import { API_BASE_URL } from '../config';
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "../config";
 
 export default function FundaeAlumnos() {
   const [alumnos, setAlumnos] = useState([]);

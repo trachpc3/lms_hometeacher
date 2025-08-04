@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
@@ -34,7 +35,7 @@ const ProductiveSkills = () => {
   useEffect(() => {
     const fetchActividadId = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/actividades/unidad/${unitId}/productiveSkills`);
+        const res = await fetch(`${API_BASE_URL}/actividades/unidad/${unitId}/productiveSkills`);
         const actividad = await res.json();
         setActividadId(actividad.id);
       } catch (err) {
@@ -44,7 +45,7 @@ const ProductiveSkills = () => {
 
     const fetchPrompts = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/actividades/unidad/${unitId}/productiveSkills/prompts`);
+        const res = await fetch(`${API_BASE_URL}/actividades/unidad/${unitId}/productiveSkills/prompts`);
         const data = await res.json();
         setPrompts(data);
       } catch (err) {

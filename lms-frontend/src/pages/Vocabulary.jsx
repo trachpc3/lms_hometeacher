@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Mic, HelpCircle, X } from "lucide-react";
@@ -46,7 +47,7 @@ const Vocabulary = () => {
     const fetchVocabulary = async () => {
       try {
         console.log("Fetching vocabulary for unit:", unitId);
-        const response = await fetch(`http://localhost:5000/api/vocabulary/${unitId}`);
+        const response = await fetch(`${API_BASE_URL}/vocabulary/${unitId}`);
         
         if (!response.ok) {
           throw new Error(`Error en la API: ${response.status} ${response.statusText}`);

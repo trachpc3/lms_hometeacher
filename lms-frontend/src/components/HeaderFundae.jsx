@@ -44,8 +44,8 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
     user?.imagen && user.imagen !== "default-profile.jpg"
       ? user.imagen.startsWith("http")
         ? user.imagen
-        : `http://localhost:5000/uploads/${user.imagen.replace(/^uploads\/|^images\//, "")}`
-      : "http://localhost:5000/uploads/default-profile.jpg"
+        : `${API_UPLOADS_URL}/${user.imagen.replace(/^uploads\/|^images\//, "")}`
+      : "${API_UPLOADS_URL}/default-profile.jpg"
   }
   alt="User"
   className="w-full h-full object-cover"

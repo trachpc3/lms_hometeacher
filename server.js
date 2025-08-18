@@ -50,6 +50,18 @@ app.use(cors({
   credentials: true,
 }));
 
+// Middleware para respuestas CORS más explícitas (útil en entornos mixtos como Vite)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control");
+  next();
+});
+
 // ✅ JSON Body Parser
 app.use(express.json({ limit: "50mb" }));
 

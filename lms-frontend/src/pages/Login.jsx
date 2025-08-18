@@ -20,11 +20,13 @@ const Login = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include", // 👈 ESTO ES CLAVE PARA COOKIES / JWT EN CORS
+  body: JSON.stringify({ email, password }),
+});
+
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -73,10 +75,12 @@ const Login = () => {
   const handleGoogleResponse = async (response) => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token: response.credential }),
-      });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include", // 👈 También aquí
+  body: JSON.stringify({ access_token: response.credential }),
+});
+
 
       if (!res.ok) throw new Error("Error al iniciar sesión con Google");
 

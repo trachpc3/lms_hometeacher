@@ -50,7 +50,7 @@ app.use(cors({
   credentials: true,
 }));
 
-// Middleware para respuestas CORS más explícitas (útil en entornos mixtos como Vite)
+// ✅ Middleware para respuestas CORS más explícitas (útil en entornos mixtos como Vite)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
@@ -60,6 +60,10 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control");
   next();
+});
+// ✅ Preflight OPTIONS
+app.options("*", (req, res) => {
+  res.sendStatus(200);
 });
 
 // ✅ JSON Body Parser

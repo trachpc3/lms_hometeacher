@@ -1,13 +1,15 @@
 import axios from "axios";
 
+// Usa VITE_API_BASE_URL desde archivo .env
 const api = axios.create({
-  baseURL: "http://86.109.171.91:3001/api", // 🔁 IP real del backend
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
   headers: {
     "Cache-Control": "no-cache",
   },
-  withCredentials: true, // ✅ importante si usas cookies o sesiones
+  withCredentials: true, // importante si usas cookies o sesiones
 });
 
+// Añade el token JWT automáticamente si existe
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -17,3 +19,4 @@ api.interceptors.request.use((config) => {
 });
 
 export default api;
+

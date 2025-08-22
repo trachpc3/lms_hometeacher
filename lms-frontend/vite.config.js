@@ -10,9 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'), // 👈 Alias @ para acceder a src
     },
   },
-  server: {
-    proxy: {
-      '/uploads': 'http://localhost:5000', // Redirige /uploads al backend
-    },
+ server: {
+  proxy: {
+    '/api': { target: 'http://localhost:5000', changeOrigin: true },
+    '/uploads': { target: 'http://localhost:5000', changeOrigin: true },
   },
+},
 });

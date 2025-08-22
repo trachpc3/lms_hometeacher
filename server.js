@@ -2,11 +2,9 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import "dotenv/config";
+import cookieParser from "cookie-parser"; // ✅ NUEVO
 
 import { verifyToken } from "./middlewares/authMiddleware.js";
-
-// ✅ Servir archivos subidos
-import { serveUploads } from "./middlewares/serverUploads.js";
 
 // ✅ Rutas
 import authRoutes from "./routes/authRoutes.js";
@@ -24,55 +22,49 @@ import progressRoutes from "./routes/progressRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import processRoutes from "./routes/processRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
-import fundaeRoutes from './routes/fundaeRoutes.js';
+import fundaeRoutes from "./routes/fundaeRoutes.js";
 import speakingRoutes from "./routes/speakingRoutes.js";
 import actividadesRoutes from "./routes/actividadesRoutes.js";
 import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
-import testnivelRoutes from "./routes/testnivelRoutes.js"; // ✅ Agregado
+import testnivelRoutes from "./routes/testnivelRoutes.js";
 
 const app = express();
 
-// ✅ Lista de orígenes permitidos
+// ✅ Para cookies `Secure` detrás de Nginx/HTTPS más adelante
+app.set("trust proxy", 1);
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://86.109.171.91:4173",
-  "https://nuevohome.campusvirtualhometeacher.es",
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-}));
-
-// ✅ Middleware para respuestas CORS más explícitas (útil en entornos mixtos como Vite)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control");
-  next();
-});
-// ✅ Preflight OPTIONS
-app.options("*", (req, res) => {
-  res.sendStatus(200);
-});
-
-// ✅ JSON Body Parser
+// ✅ Parsers
 app.use(express.json({ limit: "50mb" }));
+app.use(cookieParser()); // ✅ necesario para leer refreshToken
+
+// ========= CORS =========
+// En producción iremos a MISMO ORIGEN (Nginx → /api → :5000), así que no hace falta CORS.
+// En desarrollo permitimos localhost:5173 (Vite) y opcionalmente tu IP.
+const isProd = process.env.NODE_ENV === "production";
+
+if (!isProd) {
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://86.109.171.91:5173",
+    "http://86.109.171.91:4173",
+  ];
+
+  app.use(
+    cors({
+      origin(origin, cb) {
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(new Error("Not allowed by CORS"));
+      },
+      credentials: true, // por si pruebas refresh en dev
+    })
+  );
+
+  // Preflight solo en dev (en prod no es necesario si es mismo origen)
+  app.options("*", (req, res) => res.sendStatus(204));
+}
 
 // ✅ Archivos estáticos
 app.use(express.static(path.join(process.cwd(), "public")));
-
-// ✅ Servir archivos subidos
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
 // ✅ Rutas API
@@ -95,7 +87,7 @@ app.use("/api/fundae", fundaeRoutes);
 app.use("/api/speaking", speakingRoutes);
 app.use("/api/actividades", actividadesRoutes);
 app.use("/api/productive-skills", productiveSkillsRoutes);
-app.use("/api/testnivel", testnivelRoutes); // ✅ Ruta del test
+app.use("/api/testnivel", testnivelRoutes);
 
 // ✅ Error handler genérico
 app.use((err, req, res, next) => {
@@ -103,15 +95,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-// ✅ Mostrar rutas registradas en consola
-app._router.stack.forEach((r) => {
-  if (r.route && r.route.path) {
-    console.log(`🔹 Ruta registrada: ${r.route.path}`);
-  }
-});
+// ✅ Log de rutas registradas (opcional)
+if (process.env.NODE_ENV !== "production" && app._router?.stack) {
+  app._router.stack.forEach((r) => {
+    if (r.route && r.route.path) console.log(`🔹 Ruta registrada: ${r.route.path}`);
+  });
+}
 
 // ✅ Iniciar servidor
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });

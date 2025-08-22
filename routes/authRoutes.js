@@ -1,14 +1,16 @@
-import express from "express";
+import { Router } from "express";
 import {
   login,
   loginGoogle,
   loginMeta,
   forgotPassword,
   resetPassword,
-  register
+  register,
+  refresh,
+  logout,
 } from "../controllers/authController.js";
 
-const router = express.Router();
+const router = Router();
 
 // 🔐 Login tradicional
 router.post("/login", login);
@@ -19,14 +21,19 @@ router.post("/google", loginGoogle);
 // 🔐 Login con Facebook (Meta)
 router.post("/meta", loginMeta);
 
-// 🔐 Recuperar contraseña
+// 🔁 Refresh Access Token (usa cookie httpOnly)
+router.post("/refresh", refresh);
+
+// 🚪 Logout (borra cookie refresh)
+router.post("/logout", logout);
+
+// 🆘 Recuperar contraseña
 router.post("/forgot-password", forgotPassword);
 
-// 🔐 Resetear contraseña
+// 🔄 Resetear contraseña
 router.post("/reset-password", resetPassword);
 
-// 🔐 Rgistro de usuarios nuevos
+// 📝 Registro
 router.post("/register", register);
-
 
 export default router;

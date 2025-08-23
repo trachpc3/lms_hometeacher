@@ -1,33 +1,35 @@
+// middlewares/authMiddleware.js
 import jwt from "jsonwebtoken";
 
-const SECRET = process.env.JWT_SECRET || "secreto_super_seguro";
+// Usa el secreto de access (y, si no existe, cae al viejo JWT_SECRET)
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "secreto_super_seguro";
 
-// Middleware para verificar el token y exponer el usuario
+// Verifica token y expone userId/rol en req
 export const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(403).json({ message: "Acceso denegado, token no proporcionado" });
+  const auth = req.headers.authorization || "";
+  const hasBearer = auth.startsWith("Bearer ");
+  if (!hasBearer) {
+    return res.status(401).json({ message: "Acceso denegado, token no proporcionado" });
   }
 
-  const token = authHeader.split(" ")[1];
-
+  const token = auth.slice(7);
   try {
-    const decoded = jwt.verify(token, SECRET);
-    req.user = decoded;       // { id, rol, ... }
-    req.token = token;        // útil para futuros webhooks/logs
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Token inválido o expirado" });
+    const payload = jwt.verify(token, ACCESS_SECRET);
+    // compatibilidad: tokens nuevos usan `sub`, antiguos `id`
+    req.userId = payload.sub || payload.id;
+    req.userRole = payload.rol;
+    req.user = payload;   // deja el payload por si lo usas en otros sitios
+    req.token = token;
+    return next();
+  } catch {
+    return res.status(401).json({ message: "Token inválido o expirado" });
   }
 };
 
-// Middleware adicional para validar roles
-export const requireRole = (roles = []) => {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.rol)) {
-      return res.status(403).json({ message: "Permisos insuficientes" });
-    }
-    next();
-  };
+// Middleware de roles
+export const requireRole = (roles = []) => (req, res, next) => {
+  if (!req.userRole || !roles.includes(req.userRole)) {
+    return res.status(403).json({ message: "Permisos insuficientes" });
+  }
+  next();
 };

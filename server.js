@@ -29,6 +29,11 @@ import actividadesRoutes from "./routes/actividadesRoutes.js";
 import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
 import testnivelRoutes from "./routes/testnivelRoutes.js";
 
+import path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
@@ -60,8 +65,8 @@ if (!isProd) {
 }
 
 // Archivos estáticos
-app.use(express.static(path.join(process.cwd(), "public")));
-app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
++app.use(express.static(path.join(__dirname, "public")));
++app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // =========================
 //       RUTAS API

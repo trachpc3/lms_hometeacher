@@ -69,7 +69,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
 // ✅ Rutas API
 app.use("/api/auth", authRoutes);
-app.use("/api/unidades", unidadesRoutes);
+app.use("/api/unidades", verifyToken, unidadesRoutes);
 app.use("/api/sentences", sentencesRoutes);
 app.use("/api/situations", situationsRoutes);
 app.use("/api/listening", listeningRoutes);

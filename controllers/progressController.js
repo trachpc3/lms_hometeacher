@@ -58,36 +58,25 @@ export const updateProgress = async (req, res) => {
 
 // ✅ Obtener el progreso de un usuario autenticado (con control de acceso)
 export const getProgress = async (req, res) => {
-    const requesterId   = req.userId;        // del token
-    const requesterRole = req.userRole;
-    const paramUserId   = Number(req.params.userId);
+  const { userId } = req.params;
 
-    if (!requesterId) return res.status(401).json({ message: "Token inválido o expirado" });
-    if (!paramUserId)  return res.status(400).json({ message: "Falta el ID del usuario" });
+  if (!userId) {
+    return res.status(400).json({ success: false, message: "Falta el ID del usuario" });
+  }
 
-    const isStaff = ["administrador", "profesor", "gestion"].includes(requesterRole);
-    const isOwn   = requesterId === paramUserId;
+  try {
+    console.log("👤 Token =>", { userId: req.userId, role: req.userRole });
+    console.log("🔎 Param =>", req.params.userId);
 
-    if (!isStaff && !isOwn) {
-        return res.status(403).json({ message: "No autorizado para ver este progreso" });
-    }
+    console.log(`📌 Obteniendo progreso para usuario: ${userId}`);
+    const [rows] = await pool.query(
+      "SELECT unidad_id, actividad_id, completado, calificacion, fecha_completado FROM avance_usuario WHERE usuario_id = ?",
+      [userId]
+    );
 
-    try {
-        console.log(`📌 Obteniendo progreso para usuario: ${paramUserId}`);
-
-        const [rows] = await pool.query(
-            `
-            SELECT unidad_id, actividad_id, completado, calificacion, fecha_completado
-            FROM avance_usuario
-            WHERE usuario_id = ?
-            `,
-            [paramUserId]
-        );
-
-        res.json({ userId: paramUserId, progreso: rows });
-    } catch (error) {
-        console.error("❌ Error en getProgress:", error.sqlMessage || error);
-        res.status(500).json({ message: error.sqlMessage || "Error en el servidor" });
-    }
+    res.json({ userId, progreso: rows });
+  } catch (error) {
+    console.error("❌ Error en getProgress:", error.sqlMessage || error);
+    res.status(500).json({ success: false, message: error.sqlMessage || "Error en el servidor" });
+  }
 };
-

@@ -12,9 +12,11 @@ const api = axios.create({
 // === Token en cada request ===
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+  console.log("🔐 Token enviado en request:", token);  // <-- añadido
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
 
 // === Refresh automático ante 401 ===
 let isRefreshing = false;

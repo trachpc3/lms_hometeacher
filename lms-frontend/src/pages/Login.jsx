@@ -1,15 +1,17 @@
 import { GOOGLE_CLIENT_ID } from "../config";
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import logo from "../assets/loog.png";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { useUser } from "@/context/UserContext"; // ✅ añadido
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { login } = useUser(); // ✅ usar contexto de usuario
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,13 +22,12 @@ const Login = () => {
     }
 
     try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  credentials: "include", // 👈 ESTO ES CLAVE PARA COOKIES / JWT EN CORS
-  body: JSON.stringify({ email, password }),
-});
-
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // ✅ importante para cookies httpOnly
+        body: JSON.stringify({ email, password }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -35,29 +36,21 @@ const Login = () => {
 
       const { token, user } = await response.json();
 
-      const imagenNormalizada = !user.imagen || user.imagen === "/default-profile.png"
-        ? "default-profile.jpg"
-        : user.imagen.replace("/uploads/", "").replace(/^\//, "");
+      const imagenNormalizada =
+        !user.imagen || user.imagen === "/default-profile.png"
+          ? "default-profile.jpg"
+          : user.imagen.replace("/uploads/", "").replace(/^\//, "");
 
       const usuarioLimpio = {
         ...user,
         imagen: imagenNormalizada,
       };
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(usuarioLimpio));
+      localStorage.setItem("token", token); // ✅ guardar token
+      login(usuarioLimpio);                 // ✅ usar login del contexto
       toast.success("Inicio de sesión exitoso");
 
-      if (user.rol === "fundae") {
-  navigate("/fundae");
-} else if (user.rol === "gestion") {
-  navigate("/fundae/envios");
-} else if (user.rol === "profesor") {
-  navigate("/dashboard-profesor");
-} else {
-  navigate("/home");
-}
-
+      redirigirSegunRol(user.rol);
     } catch (err) {
       console.error("❌ Error login:", err);
       toast.error(err.message || "Error al iniciar sesión");
@@ -75,42 +68,46 @@ const Login = () => {
   const handleGoogleResponse = async (response) => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/google`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  credentials: "include", // 👈 También aquí
-  body: JSON.stringify({ access_token: response.credential }),
-});
-
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ access_token: response.credential }),
+      });
 
       if (!res.ok) throw new Error("Error al iniciar sesión con Google");
 
       const { token, user } = await res.json();
 
-      const imagenNormalizada = !user.imagen || user.imagen === "/default-profile.png"
-        ? "default-profile.jpg"
-        : user.imagen.replace("/uploads/", "").replace(/^\//, "");
+      const imagenNormalizada =
+        !user.imagen || user.imagen === "/default-profile.png"
+          ? "default-profile.jpg"
+          : user.imagen.replace("/uploads/", "").replace(/^\//, "");
 
       const usuarioLimpio = {
         ...user,
         imagen: imagenNormalizada,
       };
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(usuarioLimpio));
+      localStorage.setItem("token", token); // ✅ guardar token
+      login(usuarioLimpio);                 // ✅ usar login del contexto
       toast.success("Sesión iniciada con Google");
 
-         if (user.rol === "fundae") {
-  navigate("/fundae/envios");
-} else if (user.rol === "gestion") {
-  navigate("/fundae");
-} else if (user.rol === "profesor") {
-  navigate("/dashboard-profesor");
-} else {
-  navigate("/home");
-}
+      redirigirSegunRol(user.rol);
     } catch (error) {
       console.error("❌ Login Google fallido:", error);
       toast.error(error.message || "Error al iniciar sesión con Google");
+    }
+  };
+
+  const redirigirSegunRol = (rol) => {
+    if (rol === "fundae") {
+      navigate("/fundae/envios");
+    } else if (rol === "gestion") {
+      navigate("/fundae");
+    } else if (rol === "profesor") {
+      navigate("/dashboard-profesor");
+    } else {
+      navigate("/home");
     }
   };
 
@@ -129,9 +126,15 @@ const Login = () => {
         className="hidden md:flex w-2/3 h-full bg-cover bg-center items-center px-20"
         style={{ backgroundImage: "url('/landing1.jpg')" }}
       >
-        <h1 className="text-white text-5xl font-bold leading-tight"><br /><br /><br /><br /><br /><br /><br />
-
-          Bienvenido a       <p>    </p> HomeTeacher <br />
+        <h1 className="text-white text-5xl font-bold leading-tight">
+          <br />
+          <br />
+          <br />
+          <br />
+          <br />
+          <br />
+          <br />
+          Bienvenido a HomeTeacher <br />
           Tu academia de inglés online
         </h1>
       </div>

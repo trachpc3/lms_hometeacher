@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, HelpCircle } from "lucide-react";
 import logo from "../assets/loog.png";
 import TutorialModal from "../components/TutorialModal";
-import { fetchSituationById } from "@/services/situationsService.js"; // ✅ usa el servicio con api (token)
+import { fetchSituationById } from "@/services/situationsService"; // ✅ usa el servicio con api (token)
 
 const Situation = () => {
   const { unitId } = useParams();

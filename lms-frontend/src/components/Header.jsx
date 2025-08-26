@@ -1,28 +1,44 @@
 // src/components/Header.jsx
 import { useState, useEffect } from "react";
-import {
-  HelpCircle,
-  Phone,
-  Menu,
-  LogOut,
-  CheckCircle,
-} from "lucide-react";
+import { HelpCircle, Phone, Menu, LogOut, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getImagePath } from "../utils/getImagePath";
 import { useUser } from "../context/UserContext";
+import { API_UPLOADS_URL } from "../config"; // usamos la base de uploads
+
+// ---- Helpers locales para URLs seguras ----
+const trimSlashes = (s) => String(s || "").replace(/^\/+|\/+$/g, "");
+const joinUrl = (base, path = "") => `${trimSlashes(base)}/${trimSlashes(path)}`;
+const withCB = (u) => (u.includes("?") ? `${u}&t=${Date.now()}` : `${u}?t=${Date.now()}`);
+
+/** Construye la URL final de imagen de perfil:
+ *  - Acepta "ana.png", "/uploads/ana.png" o URL absoluta http/https
+ *  - Siempre añade cache-buster ?t=...
+ */
+function buildAvatarSrc(raw) {
+  if (!raw) return withCB(joinUrl(API_UPLOADS_URL, "default-profile.jpg"));
+  const val = String(raw).trim();
+
+  // URL absoluta
+  if (/^https?:\/\//i.test(val)) return withCB(val);
+
+  // Nombre/Path local → garantiza base /uploads
+  const fname = val.replace(/^\/?uploads\//, "");
+  return withCB(joinUrl(API_UPLOADS_URL, fname));
+}
 
 const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const navigate = useNavigate();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user } = useUser();
 
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [fotoPerfil, setFotoPerfil] = useState("");
 
   useEffect(() => {
-    if (user?.imagen) {
-      const fullPath = getImagePath(user.imagen);
-      setFotoPerfil(fullPath + `?t=${Date.now()}`); // evita caché
-    }
+    const imagen = !user?.imagen || user.imagen === "default-profile.jpg"
+      ? "default-profile.jpg"
+      : user.imagen;
+
+    setFotoPerfil(buildAvatarSrc(imagen));
   }, [user?.imagen]);
 
   return (
@@ -31,6 +47,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
       <button
         onClick={toggleSidebar}
         className="md:hidden p-2 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300"
+        aria-label="Abrir menú"
       >
         <Menu size={24} />
       </button>
@@ -61,7 +78,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
         {/* Perfil */}
         <div className="relative">
           <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => setDropdownOpen((o) => !o)}
             className="flex items-center gap-2"
           >
             <span className="text-gray-700 font-semibold text-sm md:text-base">
@@ -72,6 +89,10 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
                 src={fotoPerfil}
                 alt="Foto de perfil"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = buildAvatarSrc("default-profile.jpg");
+                }}
               />
             </div>
           </button>

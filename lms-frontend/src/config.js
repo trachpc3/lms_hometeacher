@@ -27,9 +27,6 @@ export const withCB = (u) => (u.includes("?") ? `${u}&t=${Date.now()}` : `${u}?t
 export const buildApiUrl = (path) => joinUrl(API_BASE_URL, path);
 
 /** Construye URL de uploads desde filename o path:
- * - buildUploadSrc("ana.png")
- * - buildUploadSrc("/uploads/ana.png")
- * - buildUploadSrc("profiles/ana.png")
  */
 export const buildUploadSrc = (raw) => {
   if (!raw) return withCB(joinUrl(API_UPLOADS_URL, "default-profile.jpg"));

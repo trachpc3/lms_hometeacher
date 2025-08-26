@@ -18,18 +18,32 @@ const Listening = () => {
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/listening/${unitId}`);
-        const data = await response.json();
-        setQuiz(data);
-      } catch (error) {
-        console.error("Error cargando preguntas de listening:", error);
-      }
-    };
+  const fetchQuestions = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/listening/${unitId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // O tu método de autenticación
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // si usas cookies
+      });
 
-    fetchQuestions();
-  }, [unitId]);
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        console.error("❌ API no devolvió un array:", data);
+        return;
+      }
+
+      setQuiz(data);
+    } catch (error) {
+      console.error("Error cargando preguntas de listening:", error);
+    }
+  };
+
+  fetchQuestions();
+}, [unitId]);
+
 
   const handleAnswer = (questionId, optionIndex) => {
     setQuiz((prevQuiz) =>

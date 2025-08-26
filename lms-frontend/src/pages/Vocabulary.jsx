@@ -4,13 +4,22 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Mic, HelpCircle, X } from "lucide-react";
 import logo from "../assets/loog.png";
 
-const VocabularyItem = ({ word, translation, audio_url, onPlay, onStartRecording, onStopRecording, isRecording, heard }) => (
-  <div 
+const VocabularyItem = ({
+  word,
+  translation,
+  audio_url,
+  onPlay,
+  onStartRecording,
+  onStopRecording,
+  isRecording,
+  heard,
+}) => (
+  <div
     className={`flex items-center justify-between p-4 rounded-lg shadow transition ${
       heard ? "bg-green-200" : "bg-gray-100 hover:bg-gray-200"
     }`}
   >
-    <span 
+    <span
       className={`text-lg font-semibold cursor-pointer ${heard ? "text-green-800" : "text-black"}`}
       onClick={() => onPlay(word, audio_url)}
     >
@@ -46,21 +55,21 @@ const Vocabulary = () => {
   useEffect(() => {
     const fetchVocabulary = async () => {
       try {
-        console.log("Fetching vocabulary for unit:", unitId);
-        const response = await fetch(`${API_BASE_URL}/vocabulary/${unitId}`);
-        
+        const response = await fetch(`${API_BASE_URL}/vocabulary/${unitId}`, {
+          credentials: "include", // ✅ Envía cookies con el token
+        });
+
         if (!response.ok) {
           throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        console.log("Data recibida:", data);
 
-        if (!data.success || !Array.isArray(data.data)) {
-          throw new Error("La respuesta de la API no tiene la estructura esperada");
+        if (!Array.isArray(data)) {
+          throw new Error("La respuesta de la API no tiene el formato esperado");
         }
 
-        setWords(data.data);
+        setWords(data);
       } catch (error) {
         console.error("Error fetching vocabulary:", error);
         setError(error.message);
@@ -71,19 +80,39 @@ const Vocabulary = () => {
   }, [unitId]);
 
   const playAudio = (word, url) => {
-    new Audio(url).play();
+    if (!url) {
+      console.warn("No hay archivo de audio para:", word);
+      return;
+    }
+
+    const validExtensions = [".mp3", ".wav", ".ogg"];
+    if (!validExtensions.some((ext) => url.toLowerCase().endsWith(ext))) {
+      console.warn("Extensión de audio no válida:", url);
+      return;
+    }
+
+    const fullUrl = `/uploads/vocabulary/unit${unitId}/${url}`;
+    const audio = new Audio(encodeURI(fullUrl));
+    audio.volume = 1;
+
+    audio.play().catch((err) => {
+      console.error("❌ Error al reproducir audio:", err);
+    });
   };
 
   const startRecording = async (word) => {
     setRecordingWord(word);
     recordedChunks.current = [];
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStream.current = stream;
       mediaRecorder.current = new MediaRecorder(stream);
+
       mediaRecorder.current.ondataavailable = (event) => {
         if (event.data.size > 0) recordedChunks.current.push(event.data);
       };
+
       mediaRecorder.current.start();
     } catch (error) {
       console.error("Error accediendo al micrófono:", error);
@@ -93,26 +122,26 @@ const Vocabulary = () => {
   const stopRecording = (word, originalAudio) => {
     if (mediaRecorder.current) {
       mediaRecorder.current.stop();
+
       mediaRecorder.current.onstop = () => {
         const audioBlob = new Blob(recordedChunks.current, { type: "audio/wav" });
         const recordedAudioURL = URL.createObjectURL(audioBlob);
         const recordedAudio = new Audio(recordedAudioURL);
         recordedAudio.play();
+
         recordedAudio.onended = () => {
           playAudio(word, originalAudio);
         };
 
-        setHeardWords(prev => {
-          prev.add(word);
-          return new Set(prev);
-        });
-        setProgress(prev => prev + 1);
+        setHeardWords((prev) => new Set([...prev, word]));
+        setProgress((prev) => prev + 1);
       };
 
       if (audioStream.current) {
-        audioStream.current.getTracks().forEach(track => track.stop());
+        audioStream.current.getTracks().forEach((track) => track.stop());
       }
     }
+
     setRecordingWord(null);
   };
 
@@ -124,15 +153,24 @@ const Vocabulary = () => {
           <h1 className="text-2xl font-bold text-gray-800">Unit {unitId}: Vocabulary</h1>
         </Link>
         <div className="flex items-center gap-4">
-          <button onClick={() => setIsTutorialOpen(true)} className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+          <button
+            onClick={() => setIsTutorialOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
             <HelpCircle size={20} />
             Tutorial
           </button>
-          <Link to={`/unidad/${unitId}`} className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition">
+          <Link
+            to={`/unidad/${unitId}`}
+            className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+          >
             <ArrowLeft size={24} />
             Volver
           </Link>
-          <Link to={`/unidad/${unitId}/speaking`} className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+          <Link
+            to={`/unidad/${unitId}/speaking`}
+            className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
             Siguiente
             <ArrowRight size={20} />
           </Link>
@@ -146,7 +184,7 @@ const Vocabulary = () => {
           <div className="bg-white shadow-lg rounded-xl p-8 max-w-6xl w-full text-center border">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {words.map((word) => (
-                <VocabularyItem 
+                <VocabularyItem
                   key={word.id}
                   {...word}
                   onPlay={playAudio}
@@ -164,12 +202,20 @@ const Vocabulary = () => {
       {isTutorialOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-center relative">
-            <button onClick={() => setIsTutorialOpen(false)} className="absolute top-2 right-2 text-gray-600 hover:text-gray-900">
+            <button
+              onClick={() => setIsTutorialOpen(false)}
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
+            >
               <X size={24} />
             </button>
             <h2 className="text-xl font-bold mb-4">¿Cómo funciona?</h2>
-            <p className="text-gray-700 mb-4">Haz clic en una palabra para escucharla. Mantén presionado el micrófono para grabarte y suelta para comparar.</p>
-            <button onClick={() => setIsTutorialOpen(false)} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+            <p className="text-gray-700 mb-4">
+              Haz clic en una palabra para escucharla. Mantén presionado el micrófono para grabarte y suelta para comparar.
+            </p>
+            <button
+              onClick={() => setIsTutorialOpen(false)}
+              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            >
               Cerrar
             </button>
           </div>

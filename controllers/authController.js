@@ -26,14 +26,10 @@ export const login = async (req, res) => {
 
     await registrarLogin(user.id, req);
 
-    // 🔑 Tokens
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
-
-    // 🍪 Set-Cookie httpOnly (7d por defecto)
     res.cookie("refreshToken", refreshToken, { ...cookieBase, maxAge: msToNumber(process.env.JWT_REFRESH_EXPIRES || "7d") });
 
-    // ▶️ Respuesta: access token en body, user normalizado
     return res.json({ token: accessToken, user: formatearUsuario(user) });
   } catch (error) {
     console.error("💥 Error en login:", error);
@@ -97,20 +93,18 @@ export const loginMeta = async (req, res) => {
   }
 };
 
-// 🔁 REFRESH: devuelve un nuevo access token usando la cookie httpOnly
+// 🔁 REFRESH
 export const refresh = async (req, res) => {
   try {
     const rt = req.cookies?.refreshToken;
     if (!rt) return res.status(401).json({ message: "No refresh token" });
 
-    const payload = verifyRefreshToken(rt); // lanza si inválido/expirado
+    const payload = verifyRefreshToken(rt);
 
-    // (opcional) verifica usuario activo
     const [rows] = await pool.query("SELECT * FROM usuarios WHERE id = ?", [payload.sub]);
     const user = rows[0];
     if (!user) return res.status(401).json({ message: "Usuario no válido" });
 
-    // Emitimos nuevo access
     const newAccess = signAccessToken(user);
     return res.json({ token: newAccess });
   } catch (err) {
@@ -118,7 +112,7 @@ export const refresh = async (req, res) => {
   }
 };
 
-// 🚪 LOGOUT: borra cookie httpOnly
+// 🚪 LOGOUT
 export const logout = async (req, res) => {
   try {
     res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
@@ -139,7 +133,7 @@ export const forgotPassword = async (req, res) => {
     if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
 
     const token = crypto.randomBytes(32).toString("hex");
-    const expires = Date.now() + 15 * 60 * 1000; // 15 minutos
+    const expires = Date.now() + 15 * 60 * 1000;
 
     await pool.query("UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?", [
       token,
@@ -147,7 +141,6 @@ export const forgotPassword = async (req, res) => {
       user.id,
     ]);
 
-    // ⚠️ En producción genera URL con tu dominio
     const resetUrl = `http://localhost:5173/restablecer-contraseña?token=${token}`;
     console.log("📧 Enlace de recuperación:", resetUrl);
 
@@ -242,14 +235,18 @@ const buscarOCrearUsuario = async ({ email, nombre, imagen }) => {
 };
 
 const registrarLogin = async (usuarioId, req) => {
+  const ip = req.ip || "Desconocido";
+  const userAgent = req.headers["user-agent"] || "Desconocido";
+  const dispositivo = userAgent.slice(0, 191); // truncado para evitar error de longitud
+
   await pool.query("INSERT INTO logins (usuario_id, ip, dispositivo) VALUES (?, ?, ?)", [
     usuarioId,
-    req.ip || "Desconocido",
-    req.headers["user-agent"] || "Desconocido",
+    ip,
+    dispositivo,
   ]);
 };
 
-// 🧰 Utilidad local para parsear duraciones estilo "7d" → ms
+// 🧰 Duración estilo "7d" → ms
 function msToNumber(str) {
   if (typeof str === "number") return str;
   const m = String(str).match(/^(\d+)(ms|s|m|h|d)$/i);

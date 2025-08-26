@@ -16,33 +16,39 @@ const Speaking = () => {
 
 
 useEffect(() => {
-  const fetchActividadId = async () => {
+  const loadSpeaking = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/actividades/unidad/${unitId}/speaking`);
-      
-      const contentType = res.headers.get("content-type");
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Error del servidor (${res.status}): ${errorText}`);
-      }
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("accessToken");
 
-      if (!contentType || !contentType.includes("application/json")) {
-        const raw = await res.text();
-        console.error("⚠️ Respuesta inesperada:", raw);
-        throw new Error(`Respuesta no es JSON: ${raw}`);
-      }
+      if (!token) throw new Error("No hay token. Inicia sesión.");
 
-      const actividad = await res.json();
-      setActividadId(actividad.id);
-      setUnitTitle(actividad.titulo || "Speaking");
+      const res = await fetch(
+        `${API_BASE_URL}/actividades/unidad/${unitId}/speaking`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // 👈 imprescindible
+          },
+          credentials: "include", // por si además usas cookies
+        }
+      );
 
+      const raw = await res.text(); // para evitar JSON parse error si 401 trae HTML
+      if (!res.ok) throw new Error(`Error del servidor (${res.status}): ${raw}`);
+
+      const data = raw ? JSON.parse(raw) : [];
+      setSpeakingItems(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("❌ Error cargando actividad Speaking:", err.message);
+      console.error("❌ Error cargando actividad Speaking:", err);
+      setError(err.message);
     }
   };
 
-  fetchActividadId();
+  loadSpeaking();
 }, [unitId]);
+
 
 
   return (

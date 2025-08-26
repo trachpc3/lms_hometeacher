@@ -75,19 +75,32 @@ const Practice = () => {
   const recordedChunks = useRef([]);
   const audioStream = useRef(null);
 
-  useEffect(() => {
-    const fetchSentences = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/sentences/${unitId}`);
-        const data = await response.json();
-        setSentences(data);
-      } catch (error) {
-        console.error("Error fetching sentences:", error);
-      }
-    };
+ useEffect(() => {
+  const fetchSentences = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sentences/${unitId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        credentials: "include",
+      });
 
-    fetchSentences();
-  }, [unitId]);
+      if (!response.ok) {
+        console.error("❌ Error de autenticación:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      setSentences(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("❌ Error fetching sentences:", error);
+    }
+  };
+
+  fetchSentences();
+}, [unitId]);
+
 
 const playAudio = (sentenceText, filename) => {
   if (!filename) {

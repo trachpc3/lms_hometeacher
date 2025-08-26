@@ -44,42 +44,61 @@ const Vocabulary = () => {
   const audioStream = useRef(null);
 
   useEffect(() => {
-    const fetchVocabulary = async () => {
-      try {
-        const token = localStorage.getItem("accessToken");
+  const fetchVocabulary = async () => {
+    try {
+      // ✅ Soporta ambas claves
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        null;
 
-        if (!token) {
-          throw new Error("Token no disponible. Inicia sesión.");
-        }
-
-        const response = await fetch(`${API_BASE_URL}/vocabulary/${unitId}`, {
+      // 1) Si tengo token en storage → Authorization header
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/vocabulary/${unitId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          credentials: "include",
+          credentials: "include", // por si también usas cookies
         });
 
-        if (!response.ok) {
-          throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+        if (res.status === 401) {
+          throw new Error("Sesión caducada. Vuelve a iniciar sesión.");
+        }
+        if (!res.ok) {
+          throw new Error(`Error en la API: ${res.status} ${res.statusText}`);
         }
 
-        const data = await response.json();
-
-        if (!data.success || !Array.isArray(data.data)) {
-          throw new Error("Respuesta inesperada de la API");
-        }
-
-        setWords(data.data);
-      } catch (error) {
-        console.error("Error fetching vocabulary:", error);
-        setError(error.message);
+        const data = await res.json();
+        setWords(Array.isArray(data) ? data : []);
+        return;
       }
-    };
 
-    fetchVocabulary();
-  }, [unitId]);
+      // 2) Si NO hay token en storage → intento con cookie httpOnly
+      const resCookie = await fetch(`${API_BASE_URL}/vocabulary/${unitId}`, {
+        method: "GET",
+        credentials: "include", // 🔑 necesario para enviar cookies
+      });
+
+      if (resCookie.status === 401) {
+        throw new Error("Token no disponible. Inicia sesión.");
+      }
+      if (!resCookie.ok) {
+        throw new Error(`Error en la API: ${resCookie.status} ${resCookie.statusText}`);
+      }
+
+      const dataCookie = await resCookie.json();
+      setWords(Array.isArray(dataCookie) ? dataCookie : []);
+    } catch (err) {
+      console.error("Error fetching vocabulary:", err);
+      setError(err.message);
+    }
+  };
+
+  fetchVocabulary();
+}, [unitId]);
+
 
   const playAudio = (word, url) => {
     if (!url) {

@@ -1,22 +1,33 @@
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL } from "../config";
 import { useState } from "react";
 import { HelpCircle, Menu, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Construye URL segura para el avatar del usuario.
+ * - Acepta nombres simples ("ana.png")
+ * - Paths tipo "/uploads/ana.png"
+ * - URLs absolutas (http/https)
+ */
 function buildAvatarUrl(raw) {
-  // normaliza: acepta "ana.png", "/uploads/ana.png" o URL absoluta
-  if (!raw) return `${API_BASE_URL}/uploads/default-profile.jpg?t=${Date.now()}`;
-  if (String(raw).startsWith("http")) {
-    const u = new URL(raw);
-    u.searchParams.set("t", Date.now());
-    return u.toString();
+  if (!raw) {
+    return `${API_BASE_URL.replace(/\/$/, "")}/uploads/default-profile.jpg?t=${Date.now()}`;
   }
-  // asegura prefijo /uploads y evita duplicados
+
+  // Si ya es absoluta (http/https)
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const u = new URL(raw);
+      u.searchParams.set("t", Date.now());
+      return u.toString();
+    } catch {
+      return `${API_BASE_URL.replace(/\/$/, "")}/uploads/default-profile.jpg?t=${Date.now()}`;
+    }
+  }
+
+  // Normaliza nombre → quita prefijos /uploads/
   const fname = String(raw).replace(/^\/?uploads\//, "");
-  const base = API_BASE_URL.replace(/\/$/, ""); // sin slash final
-  const url = new URL(`/uploads/${fname}`, base);
-  url.searchParams.set("t", Date.now());
-  return url.toString();
+  return `${API_BASE_URL.replace(/\/$/, "")}/uploads/${fname}?t=${Date.now()}`;
 }
 
 const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
@@ -25,7 +36,7 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
 
   const avatarSrc = buildAvatarUrl(
     !user?.imagen || user.imagen === "default-profile.jpg"
-      ? "/uploads/default-profile.jpg"
+      ? "default-profile.jpg"
       : user.imagen
   );
 
@@ -64,7 +75,7 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = `${API_BASE_URL.replace(/\/$/, "")}/uploads/default-profile.jpg?t=${Date.now()}`;
+                  e.currentTarget.src = buildAvatarUrl("default-profile.jpg");
                 }}
               />
             </div>
@@ -85,8 +96,11 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
               <button
                 onClick={() => {
                   setDropdownOpen(false);
-                  if (typeof handleLogout === "function") handleLogout();
-                  else console.error("❌ handleLogout no está definido correctamente");
+                  if (typeof handleLogout === "function") {
+                    handleLogout();
+                  } else {
+                    console.error("❌ handleLogout no está definido correctamente");
+                  }
                 }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
               >

@@ -1,8 +1,7 @@
-import express from "express";
-import { getSituationByUnit } from "../controllers/situationsController.js";
+import { Router } from "express";
+import { verifyToken } from "../middlewares/authMiddleware.js";
+import { getSituationById } from "../controllers/situationsController.js";
 
-const router = express.Router();
-
-router.get("/:unitId", getSituationByUnit);
-
+const router = Router();
+router.get("/:id", verifyToken, getSituationById);
 export default router;

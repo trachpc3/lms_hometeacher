@@ -103,10 +103,31 @@ const Practice = () => {
 
 
 const playAudio = (sentenceText, filename) => {
+  console.log("🧪 sentenceText:", sentenceText);
+  console.log("🧪 filename:", filename);
+
   if (!filename) {
-    console.warn("URL no proporcionada");
+    console.warn("⚠️ No se proporcionó filename.");
     return;
   }
+
+  const validExtensions = [".mp3", ".wav", ".ogg"];
+  if (!validExtensions.some((ext) => filename.toLowerCase().endsWith(ext))) {
+    console.warn("⚠️ Extensión no válida:", filename);
+    return;
+  }
+
+  const fullUrl = `${API_BASE_URL}/uploads/practice/unit${unitId}/${filename}`;
+  console.log("🔊 Reproduciendo:", fullUrl);
+
+  const audio = new Audio(encodeURI(fullUrl));
+  audio.volume = 1;
+
+  audio.play().catch((err) => {
+    console.error("❌ Error al reproducir audio:", err);
+  });
+};
+
 
   const validExtensions = [".mp3", ".wav", ".ogg"];
   if (!validExtensions.some((ext) => filename.toLowerCase().endsWith(ext))) {

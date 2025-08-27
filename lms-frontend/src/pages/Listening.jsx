@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../config';
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -20,7 +19,7 @@ const Listening = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/listening/${unitId}`, {
+        const response = await fetch(`/api/listening/${unitId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
             "Content-Type": "application/json",
@@ -58,15 +57,7 @@ const Listening = () => {
       return;
     }
 
-    const validExtensions = [".mp3", ".wav", ".ogg"];
-    if (!validExtensions.some((ext) => filename.toLowerCase().endsWith(ext))) {
-      console.warn("⚠️ Extensión no válida:", filename);
-      return;
-    }
-
-    const fullUrl = `${API_BASE_URL}/uploads/listening/unit${unitId}/${filename}`;
-    console.log("🔊 Reproduciendo:", fullUrl);
-
+    const fullUrl = `/uploads/listening/unit${unitId}/${filename}`; // ✅ sin API_BASE_URL
     const audio = new Audio(fullUrl);
     audio.volume = 1;
 
@@ -80,7 +71,9 @@ const Listening = () => {
       <header className="sticky top-0 w-full bg-white shadow-md flex items-center justify-between px-6 py-4 border-b z-50">
         <Link to="/home" className="flex items-center gap-4">
           <img src={logo} alt="Logo" className="h-10 w-auto cursor-pointer" />
-          <h1 className="text-2xl font-bold text-gray-800">Unit {unitId}: Listening</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Unit {unitId}: Listening
+          </h1>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -92,12 +85,18 @@ const Listening = () => {
             Tutorial
           </button>
 
-          <Link to={`/unidad/${unitId}`} className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition">
+          <Link
+            to={`/unidad/${unitId}`}
+            className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+          >
             <ArrowLeft size={24} />
             Volver
           </Link>
 
-          <Link to={`/unidad/${unitId}/grammar`} className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+          <Link
+            to={`/unidad/${unitId}/grammar`}
+            className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
             Siguiente
             <ArrowRight size={20} />
           </Link>
@@ -108,9 +107,14 @@ const Listening = () => {
         <div className="bg-white shadow-xl rounded-3xl p-10 max-w-4xl w-full border border-blue-100">
           <div className="space-y-6">
             {quiz.map((q, index) => (
-              <div key={q.id} className="p-6 bg-gray-50 rounded-xl border shadow-md">
+              <div
+                key={q.id}
+                className="p-6 bg-gray-50 rounded-xl border shadow-md"
+              >
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-bold text-gray-700">Pregunta {index + 1}</h2>
+                  <h2 className="text-lg font-bold text-gray-700">
+                    Pregunta {index + 1}
+                  </h2>
                 </div>
 
                 <button
@@ -167,15 +171,21 @@ const Listening = () => {
               transition={{ duration: 0.3 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button onClick={() => setIsTutorialOpen(false)} className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-600 p-2 rounded-full">
+              <button
+                onClick={() => setIsTutorialOpen(false)}
+                className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-600 p-2 rounded-full"
+              >
                 <X size={18} />
               </button>
               <div className="flex items-center justify-center gap-2 mb-4">
                 <Headphones className="text-blue-500" size={28} />
-                <h2 className="text-2xl font-bold text-gray-800">¿Cómo aprovechar esta actividad?</h2>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  ¿Cómo aprovechar esta actividad?
+                </h2>
               </div>
               <p className="text-gray-700 mb-4 text-base">
-                Escucha atentamente el audio de cada pregunta y selecciona la respuesta que mejor se ajuste.
+                Escucha atentamente el audio de cada pregunta y selecciona la
+                respuesta que mejor se ajuste.
               </p>
               <ul className="text-left list-disc list-inside space-y-2 text-gray-600">
                 <li>Escucha el audio una o dos veces antes de responder.</li>

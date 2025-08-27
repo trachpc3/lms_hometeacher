@@ -18,32 +18,31 @@ const Listening = () => {
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   useEffect(() => {
-  const fetchQuestions = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/listening/${unitId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // O tu método de autenticación
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // si usas cookies
-      });
+    const fetchQuestions = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/listening/${unitId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!Array.isArray(data)) {
-        console.error("❌ API no devolvió un array:", data);
-        return;
+        if (!Array.isArray(data)) {
+          console.error("❌ API no devolvió un array:", data);
+          return;
+        }
+
+        setQuiz(data);
+      } catch (error) {
+        console.error("Error cargando preguntas de listening:", error);
       }
+    };
 
-      setQuiz(data);
-    } catch (error) {
-      console.error("Error cargando preguntas de listening:", error);
-    }
-  };
-
-  fetchQuestions();
-}, [unitId]);
-
+    fetchQuestions();
+  }, [unitId]);
 
   const handleAnswer = (questionId, optionIndex) => {
     setQuiz((prevQuiz) =>
@@ -53,38 +52,28 @@ const Listening = () => {
     );
   };
 
-const playAudio = (filename) => {
-  if (!filename) {
-    console.warn("🎧 Archivo de audio no disponible");
-    return;
-  }
+  const playAudio = (filename) => {
+    if (!filename) {
+      console.warn("🎧 Archivo de audio no disponible");
+      return;
+    }
 
-  const validExtensions = [".mp3", ".wav", ".ogg"];
-  if (!validExtensions.some((ext) => filename.toLowerCase().endsWith(ext))) {
-    console.warn("⚠️ Extensión no válida:", filename);
-    return;
-  }
+    const validExtensions = [".mp3", ".wav", ".ogg"];
+    if (!validExtensions.some((ext) => filename.toLowerCase().endsWith(ext))) {
+      console.warn("⚠️ Extensión no válida:", filename);
+      return;
+    }
 
-  const fullUrl = `${API_BASE_URL}/uploads/listening/unit${unitId}/${filename}`;
-  console.log("🔊 Reproduciendo:", fullUrl);
+    const fullUrl = `${API_BASE_URL}/uploads/listening/unit${unitId}/${filename}`;
+    console.log("🔊 Reproduciendo:", fullUrl);
 
-  const audio = new Audio(fullUrl);
-  audio.volume = 1;
-  audio.play().catch((err) => {
-    console.error("❌ Error al reproducir audio:", err);
-  });
-};
-return;
-  }
+    const audio = new Audio(fullUrl);
+    audio.volume = 1;
 
-  const fullUrl = `/uploads/listening/unit${unitId}/${filename}`;
-  const audio = new Audio(fullUrl);
-  audio.volume = 1;
-  audio.play().catch((err) => {
-    console.error("❌ Error al reproducir audio:", err);
-  });
-};
-
+    audio.play().catch((err) => {
+      console.error("❌ Error al reproducir audio:", err);
+    });
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white">

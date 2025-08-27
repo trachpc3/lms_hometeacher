@@ -53,10 +53,28 @@ const Listening = () => {
     );
   };
 
- const playAudio = (filename) => {
+const playAudio = (filename) => {
   if (!filename) {
     console.warn("🎧 Archivo de audio no disponible");
     return;
+  }
+
+  const validExtensions = [".mp3", ".wav", ".ogg"];
+  if (!validExtensions.some((ext) => filename.toLowerCase().endsWith(ext))) {
+    console.warn("⚠️ Extensión no válida:", filename);
+    return;
+  }
+
+  const fullUrl = `${API_BASE_URL}/uploads/listening/unit${unitId}/${filename}`;
+  console.log("🔊 Reproduciendo:", fullUrl);
+
+  const audio = new Audio(fullUrl);
+  audio.volume = 1;
+  audio.play().catch((err) => {
+    console.error("❌ Error al reproducir audio:", err);
+  });
+};
+return;
   }
 
   const fullUrl = `/uploads/listening/unit${unitId}/${filename}`;

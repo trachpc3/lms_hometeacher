@@ -12,6 +12,9 @@ import { getUserFromLocalStorage } from "../hooks/useUser";
 import { fetchUnits } from "../services/unitsService";
 import { levels } from "../data/levelsData";
 
+import { fetchProgress } from "../services/progressService";
+
+
 const levelToNumber = {
   Beginners: 1,
   Lower: 2,

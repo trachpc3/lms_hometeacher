@@ -126,21 +126,30 @@ const Practice = () => {
     });
   };
 
-  const startRecording = async (sentenceText) => {
-    setRecordingSentence(sentenceText);
-    recordedChunks.current = [];
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStream.current = stream;
-      mediaRecorder.current = new MediaRecorder(stream);
-      mediaRecorder.current.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedChunks.current.push(event.data);
-      };
-      mediaRecorder.current.start();
-    } catch (error) {
-      console.error("Error accediendo al micrófono:", error);
-    }
-  };
+ const startRecording = async (sentenceText) => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("⚠️ Tu navegador o dispositivo no soporta grabación de audio.");
+    console.warn("navigator.mediaDevices o getUserMedia no está disponible.");
+    return;
+  }
+
+  setRecordingSentence(sentenceText);
+  recordedChunks.current = [];
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioStream.current = stream;
+    mediaRecorder.current = new MediaRecorder(stream);
+    mediaRecorder.current.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunks.current.push(event.data);
+    };
+    mediaRecorder.current.start();
+  } catch (error) {
+    alert("⚠️ No se pudo acceder al micrófono. Verificá que esté habilitado y con permisos.");
+    console.error("Error accediendo al micrófono:", error);
+  }
+};
+
 
   const stopRecording = (sentenceText, originalAudio) => {
     if (mediaRecorder.current) {

@@ -93,24 +93,23 @@ const HomePage = () => {
     }
   };
 
-  const cargarProgreso = async (userId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/progress/${userId}`);
-      if (!response.ok) throw new Error("Error al obtener progreso");
 
-      const data = await response.json();
-      const progresoMap = {};
+const cargarProgreso = async (userId) => {
+  try {
+    const { progreso } = await fetchProgress(userId); // ✅ ya incluye el token
 
-      data.forEach(({ unidad_id, actividad_id }) => {
-        if (!progresoMap[unidad_id]) progresoMap[unidad_id] = new Set();
-        progresoMap[unidad_id].add(actividad_id);
-      });
+    const progresoMap = {};
+    progreso.forEach(({ unidad_id, actividad_id }) => {
+      if (!progresoMap[unidad_id]) progresoMap[unidad_id] = new Set();
+      progresoMap[unidad_id].add(actividad_id);
+    });
 
-      setProgress(progresoMap);
-    } catch (error) {
-      console.error("❌ Error cargando progreso:", error);
-    }
-  };
+    setProgress(progresoMap);
+  } catch (error) {
+    console.error("❌ Error cargando progreso:", error.message);
+  }
+};
+
 
   const handleLevelChange = (levelId) => {
     setCurrentLevel(levelId);

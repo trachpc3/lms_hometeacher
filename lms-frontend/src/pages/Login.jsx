@@ -5,13 +5,14 @@ import { useNavigate, Link } from "react-router-dom";
 import logo from "../assets/loog.png";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import { toast } from "react-hot-toast";
-import { useUser } from "@/context/UserContext"; // ✅ añadido
+import { useUser } from "@/context/UserContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useUser(); // ✅ usar contexto de usuario
+  const { login } = useUser();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,11 +22,18 @@ const Login = () => {
       return;
     }
 
+    if (!email.match(/^\S+@\S+\.\S+$/)) {
+      toast.error("Correo no válido");
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // ✅ importante para cookies httpOnly
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -35,25 +43,14 @@ const Login = () => {
       }
 
       const { token, user } = await response.json();
-
-      const imagenNormalizada =
-        !user.imagen || user.imagen === "/default-profile.png"
-          ? "default-profile.jpg"
-          : user.imagen.replace("/uploads/", "").replace(/^\//, "");
-
-      const usuarioLimpio = {
-        ...user,
-        imagen: imagenNormalizada,
-      };
-
-      localStorage.setItem("token", token); // ✅ guardar token
-      login(usuarioLimpio);                 // ✅ usar login del contexto
+      procesarUsuario(token, user);
       toast.success("Inicio de sesión exitoso");
-
       redirigirSegunRol(user.rol);
     } catch (err) {
       console.error("❌ Error login:", err);
       toast.error(err.message || "Error al iniciar sesión");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,21 +74,8 @@ const Login = () => {
       if (!res.ok) throw new Error("Error al iniciar sesión con Google");
 
       const { token, user } = await res.json();
-
-      const imagenNormalizada =
-        !user.imagen || user.imagen === "/default-profile.png"
-          ? "default-profile.jpg"
-          : user.imagen.replace("/uploads/", "").replace(/^\//, "");
-
-      const usuarioLimpio = {
-        ...user,
-        imagen: imagenNormalizada,
-      };
-
-      localStorage.setItem("token", token); // ✅ guardar token
-      login(usuarioLimpio);                 // ✅ usar login del contexto
+      procesarUsuario(token, user);
       toast.success("Sesión iniciada con Google");
-
       redirigirSegunRol(user.rol);
     } catch (error) {
       console.error("❌ Login Google fallido:", error);
@@ -99,16 +83,30 @@ const Login = () => {
     }
   };
 
+  const procesarUsuario = (token, user) => {
+    const imagenNormalizada =
+      !user.imagen || user.imagen === "/default-profile.png"
+        ? "default-profile.jpg"
+        : user.imagen.replace("/uploads/", "").replace(/^\//, "");
+
+    const usuarioLimpio = {
+      ...user,
+      imagen: imagenNormalizada,
+    };
+
+    localStorage.setItem("token", token);
+    login(usuarioLimpio);
+  };
+
   const redirigirSegunRol = (rol) => {
-    if (rol === "fundae") {
-      navigate("/fundae/envios");
-    } else if (rol === "gestion") {
-      navigate("/fundae");
-    } else if (rol === "profesor") {
-      navigate("/dashboard-profesor");
-    } else {
-      navigate("/home");
-    }
+    const rutasPorRol = {
+      fundae: "/fundae/envios",
+      gestion: "/fundae",
+      profesor: "/dashboard-profesor",
+      default: "/home",
+    };
+
+    navigate(rutasPorRol[rol] || rutasPorRol.default);
   };
 
   useEffect(() => {
@@ -148,6 +146,7 @@ const Login = () => {
             type="email"
             placeholder="Correo electrónico"
             value={email}
+            autoComplete="email"
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 mb-4"
             required
@@ -157,6 +156,7 @@ const Login = () => {
             type="password"
             placeholder="Contraseña"
             value={password}
+            autoComplete="current-password"
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 mb-4"
             required
@@ -164,9 +164,14 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600 transition"
+            disabled={loading}
+            className={`w-full text-white p-3 rounded-md transition ${
+              loading
+                ? "bg-blue-300 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600"
+            }`}
           >
-            INICIAR SESIÓN
+            {loading ? "Iniciando..." : "INICIAR SESIÓN"}
           </button>
 
           <div className="text-center text-gray-600 my-4">o inicia sesión con</div>

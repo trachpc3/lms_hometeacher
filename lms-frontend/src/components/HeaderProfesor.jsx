@@ -1,40 +1,16 @@
-import { API_BASE_URL } from "../config";
+// src/components/HeaderProfesor.jsx
 import { useState, useEffect } from "react";
 import { HelpCircle, Menu, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-/**
- * Construye URL segura para el avatar del usuario.
- */
-function buildAvatarUrl(raw) {
-  const base = API_BASE_URL.replace(/\/$/, "");
-  if (!raw || raw === "default-profile.jpg") {
-    return `${base}/uploads/default-profile.jpg?t=${Date.now()}`;
-  }
-
-  if (/^https?:\/\//i.test(raw)) {
-    try {
-      const u = new URL(raw);
-      u.searchParams.set("t", Date.now());
-      return u.toString();
-    } catch {
-      return `${base}/uploads/default-profile.jpg?t=${Date.now()}`;
-    }
-  }
-
-  const fname = String(raw).replace(/^\/?uploads\//, "");
-  return `${base}/uploads/${fname}?t=${Date.now()}`;
-}
+import { getAvatarUrl } from "@/utils/getAvatarUrl";
 
 const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState("");
 
-  // 🔄 Actualiza imagen cada vez que cambia `user.imagen`
   useEffect(() => {
-    const nuevaSrc = buildAvatarUrl(user?.imagen);
-    setAvatarSrc(nuevaSrc);
+    setAvatarSrc(getAvatarUrl(user?.imagen));
   }, [user?.imagen]);
 
   return (
@@ -55,7 +31,7 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
         <HelpCircle size={20} /> Centro de Ayuda
       </button>
 
-      {/* Acciones y perfil */}
+      {/* Perfil */}
       <div className="flex items-center gap-2 md:gap-4">
         <div className="relative">
           <button
@@ -72,7 +48,7 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = buildAvatarUrl("default-profile.jpg");
+                  e.currentTarget.src = getAvatarUrl("default-profile.jpg");
                 }}
               />
             </div>

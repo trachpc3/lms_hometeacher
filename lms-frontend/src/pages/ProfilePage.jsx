@@ -18,7 +18,8 @@ import Header from "../components/Header";
 import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";
-import { getImagePath } from "../utils/getImagePath";
+import { getAvatarUrl } from "../utils/getAvatarUrl";
+
 import {
   getUserFromLocalStorage,
   saveUserToLocalStorage
@@ -177,11 +178,12 @@ const ProfilePage = () => {
             </div>
 
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
-              <img
-                src={previewImage || getImagePath(user.imagen)}
-                alt="Foto de perfil"
-                className="w-full h-full object-cover"
-              />
+             <img
+  src={previewImage || getAvatarUrl(user.imagen)}
+  alt="Foto de perfil"
+  className="w-full h-full object-cover"
+/>
+
             </div>
 
             <div className="mt-3 flex gap-3 flex-wrap justify-center">

@@ -1,20 +1,16 @@
-// src/components/Header.jsx
-import { useState, useEffect } from "react";
 import { HelpCircle, Phone, Menu, LogOut, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
+import { useState } from "react";
 
 const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const navigate = useNavigate();
   const { user } = useUser();
-
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [fotoPerfil, setFotoPerfil] = useState("");
 
-  useEffect(() => {
-    setFotoPerfil(getAvatarUrl(user?.imagen));
-  }, [user?.imagen]);
+  // Genera la URL del avatar dinámicamente
+  const avatarSrc = getAvatarUrl(user?.imagen);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -27,7 +23,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
         <Menu size={24} />
       </button>
 
-      {/* Logo o título (opcional) */}
+      {/* Espacio reservado para logo o título */}
       <div className="flex items-center gap-2 md:gap-4" />
 
       {/* Acciones */}
@@ -61,7 +57,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
             </span>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300 bg-gray-100">
               <img
-                src={fotoPerfil}
+                src={avatarSrc}
                 alt="Foto de perfil"
                 className="w-full h-full object-cover"
                 onError={(e) => {

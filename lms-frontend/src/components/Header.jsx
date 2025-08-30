@@ -13,11 +13,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const [fotoPerfil, setFotoPerfil] = useState("");
 
   useEffect(() => {
-    const imagen = !user?.imagen || user.imagen === "default-profile.jpg"
-      ? "default-profile.jpg"
-      : user.imagen;
-
-    setFotoPerfil(getAvatarUrl(imagen));
+    setFotoPerfil(getAvatarUrl(user?.imagen));
   }, [user?.imagen]);
 
   return (
@@ -31,7 +27,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
         <Menu size={24} />
       </button>
 
-      {/* Espacio reservado para logo o título */}
+      {/* Logo o título (opcional) */}
       <div className="flex items-center gap-2 md:gap-4" />
 
       {/* Acciones */}

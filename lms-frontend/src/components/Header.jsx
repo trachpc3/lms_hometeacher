@@ -5,31 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 
-
-// ---- Helpers locales para URLs seguras ----
-const trimSlashes = (s) => String(s || "").replace(/^\/+|\/+$/g, "");
-const joinUrl = (base, path = "") => `${trimSlashes(base)}/${trimSlashes(path)}`;
-const withCB = (u) => (u.includes("?") ? `${u}&t=${Date.now()}` : `${u}?t=${Date.now()}`);
-
-/** Construye la URL final de imagen de perfil:
- *  - Acepta "ana.png", "/uploads/ana.png" o URL absoluta http/https
- *  - Siempre añade cache-buster ?t=...
- */
-
-function buildAvatarSrc(raw) {
-  const DEFAULT = "avatars/default-profile.jpg";
-
-  if (!raw) return withCB(joinUrl(API_UPLOADS_URL, DEFAULT));
-  const val = String(raw).trim();
-
-  if (/^https?:\/\//i.test(val)) return withCB(val);
-
-  // Asegura que todas las imágenes de perfil salgan desde /uploads/avatars/
-  const fname = val.replace(/^\/?uploads\/avatars\//, "").replace(/^avatars\//, "");
-  return withCB(joinUrl(API_UPLOADS_URL, `avatars/${fname}`));
-}
-
-
 const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const navigate = useNavigate();
   const { user } = useUser();
@@ -37,14 +12,13 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [fotoPerfil, setFotoPerfil] = useState("");
 
- useEffect(() => {
-  const imagen = !user?.imagen || user.imagen === "default-profile.jpg"
-    ? "default-profile.jpg"
-    : user.imagen;
+  useEffect(() => {
+    const imagen = !user?.imagen || user.imagen === "default-profile.jpg"
+      ? "default-profile.jpg"
+      : user.imagen;
 
-  setFotoPerfil(getAvatarUrl(imagen));
-}, [user?.imagen]);
-
+    setFotoPerfil(getAvatarUrl(imagen));
+  }, [user?.imagen]);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -91,15 +65,14 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
             </span>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300 bg-gray-100">
               <img
-  src={fotoPerfil}
-  alt="Foto de perfil"
-  className="w-full h-full object-cover"
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src = getAvatarUrl("default-profile.jpg");
-  }}
-/>
-
+                src={fotoPerfil}
+                alt="Foto de perfil"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = getAvatarUrl("default-profile.jpg");
+                }}
+              />
             </div>
           </button>
 

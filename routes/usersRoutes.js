@@ -30,23 +30,30 @@ const upload = multer({ storage });
  * POST /api/users/:id/photo
  * Subida de imagen de perfil (requiere token)
  */
-router.post("/:id/photo", verifyToken, upload.single("imagen"), (req, res) => {
-  const userId = req.params.id;
-
-  if (!req.file) {
-    return res.status(400).json({ message: "No se ha subido ningún archivo" });
-  }
-
-  const imageName = req.file.filename;
-
-  db.query("UPDATE usuarios SET imagen = ? WHERE id = ?", [imageName, userId], (err) => {
+router.post("/:id/photo", verifyToken, (req, res, next) => {
+  upload.single("imagen")(req, res, (err) => {
     if (err) {
-      console.error("❌ Error al guardar la imagen:", err);
-      return res.status(500).json({ message: "Error al guardar imagen" });
+      console.error("❌ Error en multer:", err);
+      return res.status(400).json({ message: "Error al procesar la imagen" });
     }
 
-    const publicUrl = `/uploads/avatars/${imageName}`;
-    res.json({ imagen: imageName, url: publicUrl });
+    const userId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No se ha subido ningún archivo" });
+    }
+
+    const imageName = req.file.filename;
+
+    db.query("UPDATE usuarios SET imagen = ? WHERE id = ?", [imageName, userId], (dbErr) => {
+      if (dbErr) {
+        console.error("❌ Error al guardar la imagen en la BD:", dbErr);
+        return res.status(500).json({ message: "Error al guardar imagen" });
+      }
+
+      const publicUrl = `/uploads/avatars/${imageName}`;
+      res.json({ imagen: imageName, url: publicUrl });
+    });
   });
 });
 

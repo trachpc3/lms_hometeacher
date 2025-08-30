@@ -13,6 +13,8 @@ export function getAvatarUrl(imagen) {
     return imagen;
   }
 
-  // Si es un nombre de archivo, construimos la ruta
-  return `${ORIGIN}/uploads/avatars/${imagen}`;
+  // Limpia cualquier prefijo duplicado tipo "uploads/avatars/"
+  const cleanName = imagen.replace(/^\/?uploads\/avatars\/?/, "");
+
+  return `${ORIGIN}/uploads/avatars/${cleanName}`;
 }

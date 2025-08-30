@@ -1,3 +1,4 @@
+// src/components/Header.jsx
 import { HelpCircle, Phone, Menu, LogOut, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
@@ -9,8 +10,8 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Genera la URL del avatar dinámicamente
-  const avatarSrc = getAvatarUrl(user?.imagen);
+  // ✅ Genera la URL del avatar con cache-buster para que se actualice al cambiar
+  const avatarSrc = getAvatarUrl(user?.imagen) + `?t=${user?._updatedAt || ""}`;
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">

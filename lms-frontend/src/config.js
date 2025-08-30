@@ -29,8 +29,17 @@ export const buildApiUrl = (path) => joinUrl(API_BASE_URL, path);
 /** Construye URL de uploads desde filename o path:
  */
 export const buildUploadSrc = (raw) => {
-  if (!raw) return withCB(joinUrl(API_UPLOADS_URL, "default-profile.jpg"));
+  const DEFAULT = "avatars/default-profile.jpg";
+
+  if (!raw) return withCB(joinUrl(API_UPLOADS_URL, DEFAULT));
+
   if (/^https?:\/\//i.test(raw)) return withCB(raw);
-  const fname = String(raw).replace(/^\/?uploads\//, ""); // quita prefijo duplicado
-  return withCB(joinUrl(API_UPLOADS_URL, fname));
+
+  // Elimina prefijos duplicados y asegura que todas las imágenes de perfil salgan de /avatars/
+  const fname = String(raw)
+    .replace(/^\/?uploads\/avatars\//, "")
+    .replace(/^avatars\//, "")
+    .trim();
+
+  return withCB(joinUrl(API_UPLOADS_URL, `avatars/${fname}`));
 };

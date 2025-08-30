@@ -6,9 +6,9 @@ import bcrypt from "bcrypt";
 import db from "../models/db.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { verifyToken } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -24,14 +24,13 @@ const storage = multer.diskStorage({
     cb(null, `user_${req.params.id}${ext}`);
   },
 });
-
 const upload = multer({ storage });
 
 /**
  * POST /api/users/:id/photo
- * Subida de imagen de perfil
+ * Subida de imagen de perfil (requiere token)
  */
-router.post("/:id/photo", upload.single("imagen"), (req, res) => {
+router.post("/:id/photo", verifyToken, upload.single("imagen"), (req, res) => {
   const userId = req.params.id;
 
   if (!req.file) {
@@ -47,17 +46,14 @@ router.post("/:id/photo", upload.single("imagen"), (req, res) => {
     }
 
     const publicUrl = `/uploads/avatars/${imageName}`;
-res.json({ imagen: imageName, url: publicUrl });
-
+    res.json({ imagen: imageName, url: publicUrl });
   });
 });
 
-
 /**
- * PUT /api/users/:id/password
- * Actualización de contraseña
+ * PUT /api/users/:id/password (requiere token)
  */
-router.put("/:id/password", async (req, res) => {
+router.put("/:id/password", verifyToken, async (req, res) => {
   const { nuevaPassword } = req.body;
   if (!nuevaPassword || nuevaPassword.length < 6) {
     return res.status(400).json({ message: "Contraseña demasiado corta" });
@@ -65,7 +61,6 @@ router.put("/:id/password", async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
-
     db.query("UPDATE usuarios SET password = ? WHERE id = ?", [hashedPassword, req.params.id], (err) => {
       if (err) {
         console.error("❌ Error al actualizar contraseña:", err);

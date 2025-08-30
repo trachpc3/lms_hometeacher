@@ -19,7 +19,6 @@ import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";
 import { getAvatarUrl } from "../utils/getAvatarUrl";
-
 import {
   getUserFromLocalStorage,
   saveUserToLocalStorage,
@@ -35,7 +34,6 @@ const ProfilePage = () => {
   const { user, setUser, refreshUser } = useUser();
   const token = localStorage.getItem("token");
 
-  // ✅ Obtener estadísticas con token
   useEffect(() => {
     if (!user?.id || !token) return;
 
@@ -73,7 +71,6 @@ const ProfilePage = () => {
     formData.append("imagen", file);
 
     try {
-      // ✅ Subir imagen con token
       const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
         method: "POST",
         body: formData,
@@ -89,7 +86,6 @@ const ProfilePage = () => {
         ? data.imagen
         : `/uploads/${data.imagen}`;
 
-      // ✅ Obtener usuario actualizado con token
       const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -104,6 +100,7 @@ const ProfilePage = () => {
       const updatedUser = {
         ...fullUser,
         imagen: nuevaImagenPath,
+        _updatedAt: Date.now(), // 👈 cache-buster
       };
 
       saveUserToLocalStorage(updatedUser);

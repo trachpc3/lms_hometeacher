@@ -1,44 +1,41 @@
 import { API_BASE_URL } from "../config";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HelpCircle, Menu, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /**
  * Construye URL segura para el avatar del usuario.
- * - Acepta nombres simples ("ana.png")
- * - Paths tipo "/uploads/ana.png"
- * - URLs absolutas (http/https)
  */
 function buildAvatarUrl(raw) {
-  if (!raw) {
-    return `${API_BASE_URL.replace(/\/$/, "")}/uploads/default-profile.jpg?t=${Date.now()}`;
+  const base = API_BASE_URL.replace(/\/$/, "");
+  if (!raw || raw === "default-profile.jpg") {
+    return `${base}/uploads/default-profile.jpg?t=${Date.now()}`;
   }
 
-  // Si ya es absoluta (http/https)
   if (/^https?:\/\//i.test(raw)) {
     try {
       const u = new URL(raw);
       u.searchParams.set("t", Date.now());
       return u.toString();
     } catch {
-      return `${API_BASE_URL.replace(/\/$/, "")}/uploads/default-profile.jpg?t=${Date.now()}`;
+      return `${base}/uploads/default-profile.jpg?t=${Date.now()}`;
     }
   }
 
-  // Normaliza nombre → quita prefijos /uploads/
   const fname = String(raw).replace(/^\/?uploads\//, "");
-  return `${API_BASE_URL.replace(/\/$/, "")}/uploads/${fname}?t=${Date.now()}`;
+  return `${base}/uploads/${fname}?t=${Date.now()}`;
 }
 
 const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState("");
 
-  const avatarSrc = buildAvatarUrl(
-    !user?.imagen || user.imagen === "default-profile.jpg"
-      ? "default-profile.jpg"
-      : user.imagen
-  );
+  // 🔄 Actualiza imagen cada vez que cambia `user.imagen`
+  useEffect(() => {
+    const nuevaSrc = buildAvatarUrl(user?.imagen);
+    setAvatarSrc(nuevaSrc);
+  }, [user?.imagen]);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">

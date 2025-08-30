@@ -86,25 +86,27 @@ const ProfilePage = () => {
         ? data.imagen
         : `/uploads/${data.imagen}`;
 
-      const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // ✅ Obtener usuario actualizado con token
+const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
 
-      const fullUser = await userRes.json();
-      if (!userRes.ok || !fullUser) {
-        throw new Error("Error al obtener el usuario actualizado");
-      }
+const fullUser = await userRes.json();
+if (!userRes.ok || !fullUser) {
+  throw new Error("Error al obtener el usuario actualizado");
+}
 
-      const updatedUser = {
-        ...fullUser,
-        imagen: nuevaImagenPath,
-        _updatedAt: Date.now(), // 👈 cache-buster
-      };
+const updatedUser = {
+  ...fullUser,
+  imagen: data.imagen,         // 🔁 Usa solo el nombre de archivo que te devuelve el backend (ej: "user_12.png")
+  _updatedAt: Date.now(),      // 🆕 Esto fuerza recarga en Header por cambio en key
+};
 
-      saveUserToLocalStorage(updatedUser);
-      setUser(updatedUser);
+saveUserToLocalStorage(updatedUser);
+setUser(updatedUser);
+
 
       toast.success("Foto actualizada correctamente");
     } catch (error) {

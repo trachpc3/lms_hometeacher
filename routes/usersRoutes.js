@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 // Configuración de almacenamiento
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(__dirname, "../public/uploads");
+    const dir = path.join(__dirname, "../public/uploads/avatars");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -46,8 +46,9 @@ router.post("/:id/photo", upload.single("imagen"), (req, res) => {
       return res.status(500).json({ message: "Error al guardar imagen" });
     }
 
-    const publicUrl = `/uploads/${imageName}`;
-    res.json({ imagen: imageName, url: publicUrl });
+    const publicUrl = `/uploads/avatars/${imageName}`;
+res.json({ imagen: imageName, url: publicUrl });
+
   });
 });
 

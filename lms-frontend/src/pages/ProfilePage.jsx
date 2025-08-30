@@ -19,6 +19,7 @@ import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";
 import { getAvatarUrl } from "../utils/getAvatarUrl";
+
 import {
   getUserFromLocalStorage,
   saveUserToLocalStorage
@@ -32,7 +33,6 @@ const ProfilePage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { user, setUser, refreshUser } = useUser();
-  console.log("📦 Usuario cargado:", user);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -48,7 +48,7 @@ const ProfilePage = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    refreshUser();
+    refreshUser(); // 🔁 limpia el contexto
     navigate("/");
   };
 
@@ -59,22 +59,32 @@ const ProfilePage = () => {
     if (!file) return;
 
     const previewURL = URL.createObjectURL(file);
-    setPreviewImage(previewURL);
+    setPreviewImage(previewURL); // para vista previa inmediata
 
     const formData = new FormData();
     formData.append("imagen", file);
 
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al subir imagen");
 
-      // Pedimos el usuario actualizado
-      const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
+      const nuevaImagenPath = data.imagen.startsWith("/uploads/")
+        ? data.imagen
+        : `/uploads/${data.imagen}`;
+
+      // 2. Pedimos el usuario actualizado desde la API
+      const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const fullUser = await userRes.json();
 
       if (!userRes.ok || !fullUser) {
@@ -83,11 +93,11 @@ const ProfilePage = () => {
 
       const updatedUser = {
         ...fullUser,
-        imagen: data.url, // usamos directamente la url devuelta por el backend
+        imagen: nuevaImagenPath, // forzamos imagen nueva
       };
 
       saveUserToLocalStorage(updatedUser);
-      setUser(updatedUser);
+      setUser(updatedUser); // actualizamos el contexto
 
       toast.success("Foto actualizada correctamente");
     } catch (error) {

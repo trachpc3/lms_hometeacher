@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import { verifyToken } from "./middlewares/authMiddleware.js";
 
@@ -28,28 +30,32 @@ import actividadesRoutes from "./routes/actividadesRoutes.js";
 import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
 import testnivelRoutes from "./routes/testnivelRoutes.js";
 
-import path from "path";
-import { fileURLToPath } from "url";
+// __dirname para ES modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
-// Cookies `Secure` detrás de proxy (cuando pasemos a HTTPS)
+// Trust proxy (para cookies Secure con HTTPS detrás de proxy)
 app.set("trust proxy", 1);
 
 // Parsers
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 
-// CORS solo en desarrollo (en prod servimos mismo-origen vía Nginx → no hace falta CORS)
+// ✅ Archivos estáticos (estos deben ir antes de las rutas)
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+app.use("/api/uploads", express.static(path.join(__dirname, "public/uploads")));
+app.use(express.static(path.join(__dirname, "public")));
+
+// CORS solo en desarrollo
 if (!isProd) {
   const allowedOrigins = [
     "http://localhost:5173",
     "http://86.109.171.91:5173",
     "http://86.109.171.91:4173",
-    "http://86.109.171.91", // por si sirves front en IP en dev
+    "http://86.109.171.91",
   ];
   app.use(
     cors({
@@ -62,12 +68,6 @@ if (!isProd) {
   );
   app.options("*", (_req, res) => res.sendStatus(204));
 }
-
-// Archivos estáticos 
-app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
-app.use("/api/uploads", express.static(path.join(__dirname, "public/uploads")));
-
 
 // =========================
 //       RUTAS API
@@ -96,18 +96,18 @@ app.use("/api/actividades", verifyToken, actividadesRoutes);
 app.use("/api/productive-skills", verifyToken, productiveSkillsRoutes);
 app.use("/api/testnivel", verifyToken, testnivelRoutes);
 
-// (Si tienes alguna ruta realmente pública fuera de /auth, móntala ANTES del verifyToken)
-
 // Error handler genérico
 app.use((err, req, res, next) => {
   console.error("💥 Error interno:", err);
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-// Log de rutas (solo dev)
+// Log de rutas (solo en desarrollo)
 if (!isProd && app._router?.stack) {
   app._router.stack.forEach((r) => {
-    if (r.route && r.route.path) console.log(`🔹 Ruta registrada: ${r.route.path}`);
+    if (r.route && r.route.path) {
+      console.log(`🔹 Ruta registrada: ${r.route.path}`);
+    }
   });
 }
 

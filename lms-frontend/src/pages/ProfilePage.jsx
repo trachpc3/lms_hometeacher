@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -22,7 +22,7 @@ import { getAvatarUrl } from "../utils/getAvatarUrl";
 
 import {
   getUserFromLocalStorage,
-  saveUserToLocalStorage
+  saveUserToLocalStorage,
 } from "../hooks/useUser";
 
 const ProfilePage = () => {
@@ -33,22 +33,30 @@ const ProfilePage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { user, setUser, refreshUser } = useUser();
+  const token = localStorage.getItem("token");
 
+  // ✅ Obtener estadísticas con token
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !token) return;
 
-    fetch(`${API_BASE_URL}/stats/${user.id}`)
+    fetch(`${API_BASE_URL}/stats/${user.id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) setStats(data);
       })
-      .catch((err) => console.error("❌ Error cargando estadísticas:", err));
+      .catch((err) =>
+        console.error("❌ Error cargando estadísticas:", err)
+      );
   }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    refreshUser(); // 🔁 limpia el contexto
+    refreshUser();
     navigate("/");
   };
 
@@ -56,22 +64,22 @@ const ProfilePage = () => {
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file || !token) return;
 
     const previewURL = URL.createObjectURL(file);
-    setPreviewImage(previewURL); // para vista previa inmediata
+    setPreviewImage(previewURL);
 
     const formData = new FormData();
     formData.append("imagen", file);
 
     try {
-      const token = localStorage.getItem("token");
+      // ✅ Subir imagen con token
       const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
         method: "POST",
+        body: formData,
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        body: formData,
       });
 
       const data = await res.json();
@@ -81,23 +89,25 @@ const ProfilePage = () => {
         ? data.imagen
         : `/uploads/${data.imagen}`;
 
-      // 2. Pedimos el usuario actualizado desde la API
+      // ✅ Obtener usuario actualizado con token
       const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
-      const fullUser = await userRes.json();
 
+      const fullUser = await userRes.json();
       if (!userRes.ok || !fullUser) {
         throw new Error("Error al obtener el usuario actualizado");
       }
 
       const updatedUser = {
         ...fullUser,
-        imagen: nuevaImagenPath, // forzamos imagen nueva
+        imagen: nuevaImagenPath,
       };
 
       saveUserToLocalStorage(updatedUser);
-      setUser(updatedUser); // actualizamos el contexto
+      setUser(updatedUser);
 
       toast.success("Foto actualizada correctamente");
     } catch (error) {
@@ -216,11 +226,17 @@ const ProfilePage = () => {
             <p className="text-sm text-gray-600">{user.email}</p>
 
             <div className="mt-3 text-gray-700 text-sm flex justify-center items-center gap-3 flex-wrap">
-              <p><strong>Curso:</strong> {user.curso}</p>
+              <p>
+                <strong>Curso:</strong> {user.curso}
+              </p>
               <span className="text-gray-400">|</span>
-              <p><strong>Profesor:</strong> {user.profesor}</p>
+              <p>
+                <strong>Profesor:</strong> {user.profesor}
+              </p>
               <span className="text-gray-400">|</span>
-              <p><strong>Móvil:</strong> {user.movil}</p>
+              <p>
+                <strong>Móvil:</strong> {user.movil}
+              </p>
             </div>
           </div>
 
@@ -236,8 +252,12 @@ const ProfilePage = () => {
                     key={index}
                     className="relative bg-gray-50 rounded-lg p-4 shadow-md flex flex-col justify-between h-full border"
                   >
-                    <h3 className="text-lg font-semibold text-gray-700">{card.title}</h3>
-                    <p className="text-2xl font-bold mt-2 text-gray-900">{card.value}</p>
+                    <h3 className="text-lg font-semibold text-gray-700">
+                      {card.title}
+                    </h3>
+                    <p className="text-2xl font-bold mt-2 text-gray-900">
+                      {card.value}
+                    </p>
                     <p className="text-sm text-gray-500">{card.desc}</p>
                     <span
                       className={`absolute -top-3 -right-3 ${card.color} text-white rounded-full w-10 h-10 flex items-center justify-center shadow`}

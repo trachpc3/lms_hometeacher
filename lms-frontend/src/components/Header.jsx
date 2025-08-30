@@ -14,17 +14,20 @@ const withCB = (u) => (u.includes("?") ? `${u}&t=${Date.now()}` : `${u}?t=${Date
  *  - Acepta "ana.png", "/uploads/ana.png" o URL absoluta http/https
  *  - Siempre añade cache-buster ?t=...
  */
+
 function buildAvatarSrc(raw) {
-  if (!raw) return withCB(joinUrl(API_UPLOADS_URL, "default-profile.jpg"));
+  const DEFAULT = "avatars/default-profile.jpg";
+
+  if (!raw) return withCB(joinUrl(API_UPLOADS_URL, DEFAULT));
   const val = String(raw).trim();
 
-  // URL absoluta
   if (/^https?:\/\//i.test(val)) return withCB(val);
 
-  // Nombre/Path local → garantiza base /uploads
-  const fname = val.replace(/^\/?uploads\//, "");
-  return withCB(joinUrl(API_UPLOADS_URL, fname));
+  // Asegura que todas las imágenes de perfil salgan desde /uploads/avatars/
+  const fname = val.replace(/^\/?uploads\/avatars\//, "").replace(/^avatars\//, "");
+  return withCB(joinUrl(API_UPLOADS_URL, `avatars/${fname}`));
 }
+
 
 const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const navigate = useNavigate();

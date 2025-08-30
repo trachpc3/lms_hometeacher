@@ -10,8 +10,11 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout }) => {
   const [avatarSrc, setAvatarSrc] = useState("");
 
   useEffect(() => {
-    setAvatarSrc(getAvatarUrl(user?.imagen));
-  }, [user?.imagen]);
+    // Añade ?t=timestamp para forzar refresco de caché
+    const url = getAvatarUrl(user?.imagen);
+    const cacheBustedUrl = url + `?t=${user?._updatedAt || Date.now()}`;
+    setAvatarSrc(cacheBustedUrl);
+  }, [user?.imagen, user?._updatedAt]);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">

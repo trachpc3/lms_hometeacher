@@ -19,7 +19,6 @@ import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";
 import { getAvatarUrl } from "../utils/getAvatarUrl";
-
 import {
   getUserFromLocalStorage,
   saveUserToLocalStorage
@@ -35,7 +34,6 @@ const ProfilePage = () => {
   const { user, setUser, refreshUser } = useUser();
   console.log("📦 Usuario cargado:", user);
 
-
   useEffect(() => {
     if (!user?.id) return;
 
@@ -48,62 +46,55 @@ const ProfilePage = () => {
   }, [user]);
 
   const handleLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  refreshUser(); // 🔁 limpia el contexto
-  navigate("/");
-};
-
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    refreshUser();
+    navigate("/");
+  };
 
   const handleChangePhotoClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-  const previewURL = URL.createObjectURL(file);
-  setPreviewImage(previewURL); // para vista previa inmediata
+    const previewURL = URL.createObjectURL(file);
+    setPreviewImage(previewURL);
 
-  const formData = new FormData();
-  formData.append("imagen", file);
+    const formData = new FormData();
+    formData.append("imagen", file);
 
-  try {
-    // 1. Subimos la imagen
-    const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Error al subir imagen");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error al subir imagen");
 
-    const nuevaImagenPath = data.imagen.startsWith("/uploads/")
-      ? data.imagen
-      : `/uploads/${data.imagen}`;
+      // Pedimos el usuario actualizado
+      const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
+      const fullUser = await userRes.json();
 
-    // 2. Pedimos el usuario actualizado desde la API
-    const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
-    const fullUser = await userRes.json();
+      if (!userRes.ok || !fullUser) {
+        throw new Error("Error al obtener el usuario actualizado");
+      }
 
-    if (!userRes.ok || !fullUser) {
-      throw new Error("Error al obtener el usuario actualizado");
+      const updatedUser = {
+        ...fullUser,
+        imagen: data.url, // usamos directamente la url devuelta por el backend
+      };
+
+      saveUserToLocalStorage(updatedUser);
+      setUser(updatedUser);
+
+      toast.success("Foto actualizada correctamente");
+    } catch (error) {
+      console.error("❌ Error en actualización de foto:", error);
+      toast.error("No se pudo actualizar la foto");
     }
-
-    const updatedUser = {
-      ...fullUser,
-      imagen: nuevaImagenPath, // forzamos imagen nueva
-    };
-
-    saveUserToLocalStorage(updatedUser);
-    setUser(updatedUser); // actualizamos el contexto
-
-    toast.success("Foto actualizada correctamente");
-  } catch (error) {
-    console.error("❌ Error en actualización de foto:", error);
-    toast.error("No se pudo actualizar la foto");
-  }
-};
-
+  };
 
   const statsCards = stats
     ? [
@@ -156,13 +147,12 @@ const ProfilePage = () => {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="sticky top-0 z-50 bg-gray-50 shadow-md border-b border-gray-300">
-         <Header
-  key={user.imagen} // 👈 esto fuerza que se re-renderice cuando cambia la imagen
-  startTutorial={() => {}}
-  handleLogout={handleLogout}
-  toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-/>
-
+          <Header
+            key={user.imagen}
+            startTutorial={() => {}}
+            handleLogout={handleLogout}
+            toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -178,12 +168,11 @@ const ProfilePage = () => {
             </div>
 
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
-             <img
-  src={previewImage || getAvatarUrl(user.imagen)}
-  alt="Foto de perfil"
-  className="w-full h-full object-cover"
-/>
-
+              <img
+                src={previewImage || getAvatarUrl(user.imagen)}
+                alt="Foto de perfil"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <div className="mt-3 flex gap-3 flex-wrap justify-center">

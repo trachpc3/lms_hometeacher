@@ -10,10 +10,17 @@ export const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState({});
 
-  const refreshUser = () => {
-    const userData = getUserFromLocalStorage();
-    setUser(userData || {});
-  };
+const refreshUser = () => {
+  const userData = getUserFromLocalStorage();
+  const token = localStorage.getItem("token");
+
+  if (userData && token) {
+    setUser(userData);
+  } else {
+    setUser({});
+  }
+};
+
 
   const logout = () => {
     clearUserFromLocalStorage();

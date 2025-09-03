@@ -32,22 +32,31 @@ const ProfilePage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { user, setUser, refreshUser } = useUser();
+
+  // ✅ Asegurarse de leer siempre el token actualizado
   const token = localStorage.getItem("token");
 
+  // ✅ Cargar estadísticas del usuario
   useEffect(() => {
-    if (!user?.id || !token) return;
+    const storedToken = localStorage.getItem("token");
+    if (!user?.id || !storedToken) return;
 
     fetch(`${API_BASE_URL}/stats/${user.id}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${storedToken}`,
       },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("No autorizado");
+        return res.json();
+      })
       .then((data) => {
         if (data.success) setStats(data);
       })
-      .catch((err) => console.error("❌ Error cargando estadísticas:", err));
-  }, [user]);
+      .catch((err) => {
+        console.error("❌ Error cargando estadísticas:", err.message);
+      });
+  }, [user?.id]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -80,7 +89,7 @@ const ProfilePage = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al subir imagen");
 
-      // ✅ Obtener usuario actualizado con token
+      // ✅ Obtener usuario actualizado
       const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -94,7 +103,7 @@ const ProfilePage = () => {
 
       const updatedUser = {
         ...fullUser,
-        imagen: data.imagen, // usar solo el nombre del archivo
+        imagen: data.imagen,
         _updatedAt: Date.now(),
       };
 
@@ -160,7 +169,7 @@ const ProfilePage = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="sticky top-0 z-50 bg-gray-50 shadow-md border-b border-gray-300">
           <Header
-            key={user._updatedAt}
+            key={user._updatedAt || user.imagen}
             startTutorial={() => {}}
             handleLogout={handleLogout}
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -187,7 +196,7 @@ const ProfilePage = () => {
                     user.imagen?.startsWith("/uploads/")
                       ? user.imagen.split("/").pop()
                       : user.imagen
-                  ) + `?t=${user._updatedAt || ""}`
+                  )
                 }
                 alt="Foto de perfil"
                 className="w-full h-full object-cover"

@@ -264,7 +264,10 @@ function formatearUsuario(user) {
   } else if (String(user.imagen).startsWith("http")) {
     imagenFinal = user.imagen;
   } else {
-    imagenFinal = `/uploads/${String(user.imagen).replace(/^\/uploads\//, "")}`;
+    imagenFinal = user.imagen.startsWith("/uploads") || user.imagen.startsWith("http")
+  ? user.imagen
+  : `/uploads/${user.imagen}`;
+
   }
   return {
     id: user.id,

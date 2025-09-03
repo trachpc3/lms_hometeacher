@@ -1,64 +1,69 @@
 import { API_BASE_URL } from '../config';
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, HelpCircle } from "lucide-react";
-import logo from "../assets/loog.png";
-import RolePlay from "../components/speaking/RolePlay";
-import TutorialModal from "../components/TutorialModal";
-import { Home } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, HelpCircle } from 'lucide-react';
+import logo from '../assets/loog.png';
+import RolePlay from '../components/speaking/RolePlay';
+import TutorialModal from '../components/TutorialModal';
 
 const Speaking = () => {
-  const { unitId } = useParams(); // ⚠️ Ojo: hablamos de unitId, no actividadId aquí
+  const { unitId } = useParams();
+
+  // ✅ estados que faltaban
+  const [speakingItems, setSpeakingItems] = useState([]);
   const [actividadId, setActividadId] = useState(null);
-  const [unitTitle, setUnitTitle] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  const currentLevel = localStorage.getItem("lastLevel") || "Beginners";
 
+  useEffect(() => {
+    const loadSpeaking = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-useEffect(() => {
-  const loadSpeaking = async () => {
-    try {
-      const token =
-        localStorage.getItem("token") || localStorage.getItem("accessToken");
+        const token =
+          localStorage.getItem('token') || localStorage.getItem('accessToken');
+        if (!token) throw new Error('No hay token. Inicia sesión.');
 
-      if (!token) throw new Error("No hay token. Inicia sesión.");
+        const res = await fetch(
+          `${API_BASE_URL}/actividades/unidad/${unitId}/speaking`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: 'include',
+          }
+        );
 
-      const res = await fetch(
-        `${API_BASE_URL}/actividades/unidad/${unitId}/speaking`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // 👈 imprescindible
-          },
-          credentials: "include", // por si además usas cookies
-        }
-      );
+        // Intentamos leer como texto por si el backend devuelve HTML en errores
+        const raw = await res.text();
+        if (!res.ok) throw new Error(`Error del servidor (${res.status}): ${raw}`);
 
-      const raw = await res.text(); // para evitar JSON parse error si 401 trae HTML
-      if (!res.ok) throw new Error(`Error del servidor (${res.status}): ${raw}`);
+        const data = raw ? JSON.parse(raw) : [];
+        const items = Array.isArray(data) ? data : [];
+        setSpeakingItems(items);
+        // ✅ si viene un array, elegimos la primera actividad por defecto
+        setActividadId(items[0]?.id ?? null);
+      } catch (err) {
+        console.error('❌ Error cargando actividad Speaking:', err);
+        setError(err.message || 'Error desconocido');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      const data = raw ? JSON.parse(raw) : [];
-      setSpeakingItems(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("❌ Error cargando actividad Speaking:", err);
-      setError(err.message);
-    }
-  };
-
-  loadSpeaking();
-}, [unitId]);
-
-
+    loadSpeaking();
+  }, [unitId]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       <header className="sticky top-0 w-full bg-white shadow-md flex items-center justify-between px-6 py-4 border-b z-50">
         <Link to="/home" className="flex items-center gap-4">
           <img src={logo} alt="Logo" className="h-10 w-auto cursor-pointer" />
-          <h1 className="text-2xl font-bold text-gray-800">
-            Unit {unitId}: Speaking
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800">Unit {unitId}: Speaking</h1>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -83,16 +88,26 @@ useEffect(() => {
             Siguiente
             <ArrowRight size={20} />
           </Link>
-          
         </div>
       </header>
 
       <div className="flex-1 flex items-center justify-center px-4 py-6">
         <div className="bg-white shadow-lg rounded-xl p-6 max-w-4xl w-full border">
-          {actividadId ? (
-            <RolePlay actividadId={actividadId} />
-          ) : (
-            <p className="text-center text-gray-500">Cargando actividad...</p>
+          {loading && <p className="text-center text-gray-500">Cargando actividad...</p>}
+
+          {!loading && error && (
+            <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700">
+              <p className="font-semibold">No se pudo cargar Speaking.</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && !actividadId && (
+            <p className="text-center text-gray-500">No hay actividad disponible.</p>
+          )}
+
+          {!loading && !error && actividadId && (
+            <RolePlay actividadId={actividadId} items={speakingItems} />
           )}
         </div>
       </div>
@@ -103,9 +118,9 @@ useEffect(() => {
         title="¿Cómo aprovechar esta actividad?"
         description="Practica tu pronunciación grabando el rol de uno de los personajes del diálogo."
         points={[
-          "Escoge si quieres interpretar a Karen o Paul.",
-          "Graba tu parte y escucha la respuesta del otro personaje.",
-          "Al final podrás escuchar el diálogo completo con tu voz.",
+          'Escoge si quieres interpretar a Karen o Paul.',
+          'Graba tu parte y escucha la respuesta del otro personaje.',
+          'Al final podrás escuchar el diálogo completo con tu voz.',
         ]}
       />
     </div>

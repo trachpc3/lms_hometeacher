@@ -82,4 +82,26 @@ router.put("/:id/password", verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/users/:id (requiere token)
+ * Devuelve datos del usuario
+ */
+router.get("/:id", verifyToken, (req, res) => {
+  const userId = req.params.id;
+
+  db.query("SELECT id, nombre, email, imagen, curso, profesor, movil, estado_formacion, fecha_registro FROM usuarios WHERE id = ?", [userId], (err, results) => {
+    if (err) {
+      console.error("❌ Error al obtener usuario:", err);
+      return res.status(500).json({ message: "Error al obtener datos del usuario" });
+    }
+
+    if (!results.length) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json(results[0]);
+  });
+});
+
+
 export default router;

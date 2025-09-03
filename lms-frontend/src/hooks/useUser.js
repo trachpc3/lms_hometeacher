@@ -7,10 +7,10 @@ export const getUserFromLocalStorage = () => {
 
   if (
     imagen !== "default-profile.jpg" &&
-    !imagen.startsWith("/uploads") &&
+    !imagen.startsWith("/uploads/avatars/") &&
     !imagen.startsWith("http")
   ) {
-    imagen = `/uploads/${imagen}`;
+    imagen = `/uploads/avatars/${imagen}`;
   }
 
   return {
@@ -19,6 +19,7 @@ export const getUserFromLocalStorage = () => {
     estado: user.estado || "",
   };
 };
+
 
 export const saveUserToLocalStorage = (user) => {
   localStorage.setItem("user", JSON.stringify(user));

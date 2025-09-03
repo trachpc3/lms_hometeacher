@@ -82,9 +82,7 @@ const ProfilePage = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al subir imagen");
 
-      const nuevaImagenPath = data.imagen.startsWith("/uploads/")
-        ? data.imagen
-        : `/uploads/${data.imagen}`;
+     
 
       // ✅ Obtener usuario actualizado con token
 const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {

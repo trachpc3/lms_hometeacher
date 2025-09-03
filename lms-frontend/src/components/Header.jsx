@@ -11,7 +11,8 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // ✅ Genera la URL del avatar con cache-buster para que se actualice al cambiar
-  const avatarSrc = getAvatarUrl(user?.imagen) + `?t=${user?._updatedAt || ""}`;
+  const avatarSrc = getAvatarUrl(user?.imagen, user?._updatedAt);
+
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">

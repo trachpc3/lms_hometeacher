@@ -185,11 +185,17 @@ setUser(updatedUser);
             </div>
 
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
-              <img
-                src={previewImage || getAvatarUrl(user.imagen)}
-                alt="Foto de perfil"
-                className="w-full h-full object-cover"
-              />
+            <img
+  src={
+    previewImage ||
+    getAvatarUrl(
+      user.imagen?.startsWith("/uploads/") ? user.imagen.split("/").pop() : user.imagen
+    )
+  }
+  alt="Foto de perfil"
+  className="w-full h-full object-cover"
+/>
+
             </div>
 
             <div className="mt-3 flex gap-3 flex-wrap justify-center">

@@ -46,9 +46,7 @@ const ProfilePage = () => {
       .then((data) => {
         if (data.success) setStats(data);
       })
-      .catch((err) =>
-        console.error("❌ Error cargando estadísticas:", err)
-      );
+      .catch((err) => console.error("❌ Error cargando estadísticas:", err));
   }, [user]);
 
   const handleLogout = () => {
@@ -82,29 +80,26 @@ const ProfilePage = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al subir imagen");
 
-     
-
       // ✅ Obtener usuario actualizado con token
-const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-});
+      const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-const fullUser = await userRes.json();
-if (!userRes.ok || !fullUser) {
-  throw new Error("Error al obtener el usuario actualizado");
-}
+      const fullUser = await userRes.json();
+      if (!userRes.ok || !fullUser) {
+        throw new Error("Error al obtener el usuario actualizado");
+      }
 
-const updatedUser = {
-  ...fullUser,
-  imagen: data.imagen,         // 🔁 Usa solo el nombre de archivo que te devuelve el backend (ej: "user_12.png")
-  _updatedAt: Date.now(),      // 🆕 Esto fuerza recarga en Header por cambio en key
-};
+      const updatedUser = {
+        ...fullUser,
+        imagen: data.imagen, // usar solo el nombre del archivo
+        _updatedAt: Date.now(),
+      };
 
-saveUserToLocalStorage(updatedUser);
-setUser(updatedUser);
-
+      saveUserToLocalStorage(updatedUser);
+      setUser(updatedUser);
 
       toast.success("Foto actualizada correctamente");
     } catch (error) {
@@ -165,7 +160,7 @@ setUser(updatedUser);
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="sticky top-0 z-50 bg-gray-50 shadow-md border-b border-gray-300">
           <Header
-            key={user.imagen}
+            key={user._updatedAt}
             startTutorial={() => {}}
             handleLogout={handleLogout}
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -185,17 +180,18 @@ setUser(updatedUser);
             </div>
 
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
-            <img
-  src={
-    previewImage ||
-    getAvatarUrl(
-      user.imagen?.startsWith("/uploads/") ? user.imagen.split("/").pop() : user.imagen
-    )
-  }
-  alt="Foto de perfil"
-  className="w-full h-full object-cover"
-/>
-
+              <img
+                src={
+                  previewImage ||
+                  getAvatarUrl(
+                    user.imagen?.startsWith("/uploads/")
+                      ? user.imagen.split("/").pop()
+                      : user.imagen
+                  ) + `?t=${user._updatedAt || ""}`
+                }
+                alt="Foto de perfil"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <div className="mt-3 flex gap-3 flex-wrap justify-center">

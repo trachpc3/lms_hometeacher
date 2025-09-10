@@ -1,108 +1,153 @@
-// src/pages/Speaking.jsx
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, HelpCircle } from "lucide-react";
-import logo from "../assets/loog.png";
-import RolePlay from "../components/speaking/RolePlay";
-import TutorialModal from "../components/TutorialModal";
-import api from "@/api"; // 👈 cliente axios central (envía Authorization y withCredentials)
+import { API_BASE_URL } from '../config';
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, HelpCircle } from 'lucide-react';
+import logo from '../assets/loog.png';
+import RolePlay from '../components/speaking/RolePlay';
+import TutorialModal from '../components/TutorialModal';
 
 const Speaking = () => {
-  // Este componente puede montarse en 2 rutas:
-  // 1) /unidad/:unitId/speaking  -> mostramos la 1ª actividad de speaking de esa unidad
-  // 2) /speaking/:actividadId     -> abrimos directamente esa actividad
-  const { unitId, actividadId: actividadIdParam } = useParams();
+  const { unitId } = useParams();
 
   const [speakingItems, setSpeakingItems] = useState([]);
   const [actividadId, setActividadId] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState(null);
+
+  const [error, setError] = useState(null);
+  const [loadingMeta, setLoadingMeta] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   useEffect(() => {
-    let alive = true;
-
-    async function loadFromUnit() {
-      // Endpoint esperado: GET /actividades/unidad/:unitId/speaking
+    const loadSpeakingMeta = async () => {
       try {
-        setLoading(true);
-        setError("");
+        setLoadingMeta(true);
+        setError(null);
 
-        const { data } = await api.get(`/actividades/unidad/${unitId}/speaking`);
+        const token =
+          localStorage.getItem('token') || localStorage.getItem('accessToken');
+        if (!token) throw new Error('No hay token. Inicia sesión.');
 
-        // La API podría devolver {items:[...]} o directamente [...]
-        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        const res = await fetch(
+          `${API_BASE_URL}/actividades/unidad/${unitId}/speaking`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: 'include',
+          }
+        );
 
-        if (!list.length) {
-          throw new Error("No hay actividades de Speaking para esta unidad.");
+        const raw = await res.text();
+        if (!res.ok) throw new Error(`Error ${res.status}: ${raw || 'sin cuerpo'}`);
+
+        const json = raw ? JSON.parse(raw) : null;
+
+        // ✅ Puede venir objeto o array
+        let actividad = null;
+        if (Array.isArray(json)) {
+          actividad = json[0] || null;
+        } else if (json && typeof json === 'object') {
+          actividad = json;
         }
 
-        if (!alive) return;
-        setSpeakingItems(list);
-        setActividadId(list[0]?.id ?? null);
-      } catch (err) {
-        if (!alive) return;
-        console.error("❌ Error cargando Speaking por unidad:", err);
-        setError(err?.response?.data?.message || err.message || "Error cargando Speaking.");
-        setSpeakingItems([]);
-        setActividadId(null);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-
-    async function loadSingleActivity() {
-      // Si viniera una ruta para coger 1 sola actividad, suele ser algo tipo:
-      // GET /speaking/:actividadId  -> devuelve { id, ... } o un array [item]
-      try {
-        setLoading(true);
-        setError("");
-
-        const { data } = await api.get(`/speaking/${actividadIdParam}`);
-
-        const item =
-          (Array.isArray(data) ? data[0] : data) && (Array.isArray(data) ? data[0] : data);
-
-        if (!item?.id) {
-          throw new Error("No se encontró la actividad indicada.");
+        if (!actividad?.id) {
+          throw new Error('No hay actividad Speaking para esta unidad.');
         }
 
-        if (!alive) return;
-        setSpeakingItems([item]);
-        setActividadId(item.id);
+        setMeta(actividad);
+        setActividadId(actividad.id);
       } catch (err) {
-        if (!alive) return;
-        console.error("❌ Error cargando Speaking por actividad:", err);
-        setError(err?.response?.data?.message || err.message || "Error cargando Speaking.");
-        setSpeakingItems([]);
-        setActividadId(null);
+        console.error('❌ Error cargando Speaking por unidad:', err);
+        setError(err.message || 'Error desconocido');
       } finally {
-        if (alive) setLoading(false);
+        setLoadingMeta(false);
       }
-    }
-
-    if (actividadIdParam) {
-      loadSingleActivity();
-    } else if (unitId) {
-      loadFromUnit();
-    } else {
-      setLoading(false);
-      setError("Ruta inválida: falta unitId o actividadId.");
-    }
-
-    return () => {
-      alive = false;
     };
-  }, [unitId, actividadIdParam]);
+
+    loadSpeakingMeta();
+  }, [unitId]);
+
+  // (Opcional) intenta traer los ítems de la actividad si RolePlay no los carga solo
+  useEffect(() => {
+    const loadItems = async () => {
+      if (!actividadId) return;
+
+      try {
+        setLoadingItems(true);
+
+        const token =
+          localStorage.getItem('token') || localStorage.getItem('accessToken');
+        if (!token) return;
+
+        // probamos varias rutas típicas
+        const tryFetch = async (path) => {
+          const r = await fetch(`${API_BASE_URL}${path}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          });
+          if (!r.ok) return null;
+          const t = await r.text();
+          if (!t) return null;
+          try {
+            return JSON.parse(t);
+          } catch {
+            return null;
+          }
+        };
+
+        const candidates = [
+          `/speaking/${actividadId}`,        // puede devolver array o {items:[...]}
+          `/speaking/${actividadId}/items`,  // puede devolver array o {items:[...]}
+        ];
+
+        let found = null;
+        for (const c of candidates) {
+          // eslint-disable-next-line no-await-in-loop
+          const data = await tryFetch(c);
+          if (!data) continue;
+
+          const list = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data?.data)
+            ? data.data
+            : [];
+
+          if (list.length) {
+            found = list;
+            break;
+          }
+        }
+
+        if (found) {
+          setSpeakingItems(found);
+        } else {
+          // no pasa nada, RolePlay podría cargar por su cuenta con actividadId
+          setSpeakingItems([]);
+        }
+      } catch (e) {
+        console.warn('No se pudieron cargar ítems de speaking:', e);
+        setSpeakingItems([]);
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+
+    loadItems();
+  }, [actividadId]);
+
+  const loading = loadingMeta || loadingItems;
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       <header className="sticky top-0 w-full bg-white shadow-md flex items-center justify-between px-6 py-4 border-b z-50">
         <Link to="/home" className="flex items-center gap-4">
           <img src={logo} alt="Logo" className="h-10 w-auto cursor-pointer" />
-          <h1 className="text-2xl font-bold text-gray-800">
-            {unitId ? `Unit ${unitId}: Speaking` : "Speaking"}
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800">Unit {unitId}: Speaking</h1>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -113,24 +158,20 @@ const Speaking = () => {
             <HelpCircle size={20} />
             Tutorial
           </button>
-          {unitId && (
-            <>
-              <Link
-                to={`/unidad/${unitId}`}
-                className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition"
-              >
-                <ArrowLeft size={24} />
-                Volver
-              </Link>
-              <Link
-                to={`/unidad/${unitId}/productiveSkills`}
-                className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                Siguiente
-                <ArrowRight size={20} />
-              </Link>
-            </>
-          )}
+          <Link
+            to={`/unidad/${unitId}`}
+            className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+          >
+            <ArrowLeft size={24} />
+            Volver
+          </Link>
+          <Link
+            to={`/unidad/${unitId}/productiveSkills`}
+            className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            Siguiente
+            <ArrowRight size={20} />
+          </Link>
         </div>
       </header>
 
@@ -150,7 +191,7 @@ const Speaking = () => {
           )}
 
           {!loading && !error && actividadId && (
-            <RolePlay actividadId={actividadId} items={speakingItems} />
+            <RolePlay actividadId={actividadId} items={speakingItems} meta={meta} />
           )}
         </div>
       </div>
@@ -161,9 +202,9 @@ const Speaking = () => {
         title="¿Cómo aprovechar esta actividad?"
         description="Practica tu pronunciación grabando el rol de uno de los personajes del diálogo."
         points={[
-          "Escoge si quieres interpretar a Karen o Paul.",
-          "Graba tu parte y escucha la respuesta del otro personaje.",
-          "Al final podrás escuchar el diálogo completo con tu voz.",
+          'Escoge si quieres interpretar a Karen o Paul.',
+          'Graba tu parte y escucha la respuesta del otro personaje.',
+          'Al final podrás escuchar el diálogo completo con tu voz.',
         ]}
       />
     </div>

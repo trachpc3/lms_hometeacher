@@ -1,8 +1,9 @@
-import { API_BASE_URL } from '../config';
+// src/pages/Grammar.jsx
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, HelpCircle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import api from "@/api";                   // 👈 usa el cliente axios central (con token)
 import logo from "../assets/loog.png";
 import avatar from "/avatarhome2.png";
 
@@ -12,17 +13,25 @@ const Grammar = () => {
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   useEffect(() => {
+    let alive = true;
+
     const fetchGrammarData = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/grammar/${unitId}`);
-        const data = await response.json();
-        setVideoUrl(data.video_url);
+        const { data } = await api.get(`/grammar/${unitId}`); // 👈 token va automático
+        // Acepta { video_url } o [ { video_url } ]
+        const url =
+          (Array.isArray(data) && data[0]?.video_url) ||
+          data?.video_url ||
+          "";
+        if (alive) setVideoUrl(url);
       } catch (error) {
-        console.error("Error fetching grammar data:", error);
+        console.error("❌ Error fetching grammar data:", error);
+        if (alive) setVideoUrl("");
       }
     };
 
     fetchGrammarData();
+    return () => { alive = false; };
   }, [unitId]);
 
   return (
@@ -42,12 +51,18 @@ const Grammar = () => {
             Tutorial
           </button>
 
-          <Link to={`/unidad/${unitId}`} className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition">
+          <Link
+            to={`/unidad/${unitId}`}
+            className="flex items-center gap-2 bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+          >
             <ArrowLeft size={24} />
             Volver
           </Link>
 
-          <Link to={`/unidad/${unitId}/assessment`} className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+          <Link
+            to={`/unidad/${unitId}/assessment`}
+            className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
             Siguiente
             <ArrowRight size={20} />
           </Link>
@@ -56,15 +71,22 @@ const Grammar = () => {
 
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="bg-white shadow-lg rounded-xl p-8 max-w-4xl w-full text-center border">
-          <iframe
-            src={videoUrl}
-            width="960"
-            height="450"
-            frameBorder="0"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            className="w-full rounded-lg"
-          ></iframe>
+          {videoUrl ? (
+            <iframe
+              src={videoUrl}
+              width="960"
+              height="450"
+              frameBorder="0"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              className="w-full rounded-lg"
+              title="Grammar video"
+            />
+          ) : (
+            <p className="text-gray-600">
+              No hay video disponible para esta unidad.
+            </p>
+          )}
         </div>
       </div>
 
@@ -85,11 +107,16 @@ const Grammar = () => {
               transition={{ duration: 0.3 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button onClick={() => setIsTutorialOpen(false)} className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-600 p-2 rounded-full">
+              <button
+                onClick={() => setIsTutorialOpen(false)}
+                className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-600 p-2 rounded-full"
+              >
                 <X size={18} />
               </button>
               <h2 className="text-2xl font-bold text-gray-800">Explicación Gramatical</h2>
-              <p className="font-semibold mt-2">Los pronombres personales y el verbo <i>to be</i> en simple present afirmativo</p>
+              <p className="font-semibold mt-2">
+                Los pronombres personales y el verbo <i>to be</i> en simple present afirmativo
+              </p>
               <div className="flex">
                 <div className="flex-1">
                   <table className="w-full border-collapse border border-gray-300 mt-4">

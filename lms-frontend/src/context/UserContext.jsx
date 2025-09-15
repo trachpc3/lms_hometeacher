@@ -1,20 +1,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";
-
 import {
   getUserFromLocalStorage,
   saveUserToLocalStorage,
   clearUserFromLocalStorage,
 } from "../hooks/useUser";
 
-import { setSessionExpiredHandler } from "./sessionManager"; // ruta ajustada ✅
-
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState({});
-  const navigate = useNavigate();
 
   const refreshUser = () => {
     const userData = getUserFromLocalStorage();
@@ -29,7 +23,6 @@ export const UserProvider = ({ children }) => {
 
   const logout = () => {
     clearUserFromLocalStorage();
-    localStorage.removeItem("token");
     setUser({});
   };
 
@@ -38,37 +31,18 @@ export const UserProvider = ({ children }) => {
     setUser(userData);
   };
 
-  const handleSessionExpired = () => {
-    logout();
-
-    toast.error("Tu sesión ha caducado. Serás redirigido al login.", {
-      duration: 3000,
-    });
-
-    setTimeout(() => {
-      navigate("/");
-    }, 3000);
-  };
-
   useEffect(() => {
     refreshUser();
-    setSessionExpiredHandler(handleSessionExpired); // ⬅️ conectar
   }, []);
 
   return (
     <UserContext.Provider
-      value={{
-        user,
-        setUser,
-        refreshUser,
-        login,
-        logout,
-        handleSessionExpired,
-      }}
+      value={{ user, setUser, refreshUser, login, logout }}
     >
       {children}
     </UserContext.Provider>
   );
 };
 
+// ✅ Hook personalizado para acceder fácilmente al contexto
 export const useUser = () => useContext(UserContext);

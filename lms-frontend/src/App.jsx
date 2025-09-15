@@ -1,8 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { UserProvider } from "./context/UserContext";
-import { Toaster } from "react-hot-toast"; // ⬅️ Toast visual
+import { UserProvider } from "./context/UserContext"; // ✅ Importa el contexto
 
-// Páginas
+// Importa las páginas de tu aplicación
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
@@ -24,6 +23,8 @@ import FundaeList from "./pages/FundaeList";
 import HomeFundae from "./pages/HomeFundae";
 import FundaeUsers from "./pages/FundaeUsers";
 import ProductiveSkillsPage from "./pages/ProductiveSkills";
+
+// 🆕 Recuperación de contraseña
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
@@ -44,6 +45,7 @@ const router = createBrowserRouter(
         { path: "renovaciones", element: <Renovaciones /> },
       ],
     },
+    // 🆕 Rutas para recuperación de contraseña
     { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
     { path: "/restablecer-contraseña", element: <ResetPassword /> },
     { path: "/register", element: <Register /> },
@@ -51,9 +53,9 @@ const router = createBrowserRouter(
       path: "/fundae",
       element: <HomeFundae />,
       children: [
-        { index: true, element: <FundaePage /> },
-        { path: "envios", element: <FundaeList /> },
-        { path: "usuarios", element: <FundaeUsers /> },
+        { index: true, element: <FundaePage /> },        // 👉 Muestra el formulario al acceder a /fundae
+        { path: "envios", element: <FundaeList /> },      // 👉 Muestra el listado en /fundae/envios
+        { path: "usuarios", element: <FundaeUsers /> }
       ],
     },
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
@@ -66,7 +68,7 @@ const router = createBrowserRouter(
     { path: "/unidad/:unitId/assessment", element: <Assessment /> },
     { path: "/unidad/:unitId/speaking", element: <CharacterSelection /> },
     { path: "/speaking/:actividadId", element: <CharacterSelection /> },
-    { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> },
+    { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> }
   ],
   {
     future: {
@@ -78,13 +80,10 @@ const router = createBrowserRouter(
 
 function App() {
   return (
-    <RouterProvider router={router}>
-      <UserProvider>
-        <Toaster position="top-center" reverseOrder={false} />
-      </UserProvider>
-    </RouterProvider>
+    <UserProvider>
+      <RouterProvider router={router} />
+    </UserProvider>
   );
 }
-
 
 export default App;

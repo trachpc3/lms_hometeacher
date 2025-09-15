@@ -1,8 +1,8 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { UserProvider } from "./context/UserContext"; // ✅ Importa el contexto
+import { UserProvider } from "./context/UserContext";
+import { Toaster } from "react-hot-toast"; // ⬅️ Toast visual
 
-// Importa las páginas de tu aplicación
-
+// Páginas
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
@@ -24,9 +24,6 @@ import FundaeList from "./pages/FundaeList";
 import HomeFundae from "./pages/HomeFundae";
 import FundaeUsers from "./pages/FundaeUsers";
 import ProductiveSkillsPage from "./pages/ProductiveSkills";
-
-
-// 🆕 Recuperación de contraseña
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
@@ -38,34 +35,27 @@ const router = createBrowserRouter(
     { path: "/home", element: <Home /> },
     { path: "/pricing", element: <Pricing /> },
     { path: "/test-nivel", element: <TestNivel /> },
-
     { path: "/perfil", element: <ProfilePage /> },
-
     {
-    path: "/dashboard-profesor",
-    element: <DashboardProfesor />,
-    children: [
-      { path: "alumnos", element: <Alumnos /> },
-      { path: "renovaciones", element: <Renovaciones /> },
-    ],
-  },
-   
-    // 🆕 Rutas para recuperación de contraseña
+      path: "/dashboard-profesor",
+      element: <DashboardProfesor />,
+      children: [
+        { path: "alumnos", element: <Alumnos /> },
+        { path: "renovaciones", element: <Renovaciones /> },
+      ],
+    },
     { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
     { path: "/restablecer-contraseña", element: <ResetPassword /> },
     { path: "/register", element: <Register /> },
-
     {
-       path: "/fundae",
-  element: <HomeFundae />,
-  children: [
-    { index: true, element: <FundaePage /> },        // 👉 Muestra el formulario al acceder a /fundae
-    { path: "envios", element: <FundaeList /> },      // 👉 Muestra el listado en /fundae/envios
-    { path: "usuarios", element: <FundaeUsers /> }
-  ],
+      path: "/fundae",
+      element: <HomeFundae />,
+      children: [
+        { index: true, element: <FundaePage /> },
+        { path: "envios", element: <FundaeList /> },
+        { path: "usuarios", element: <FundaeUsers /> },
+      ],
     },
-
-
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },
@@ -76,9 +66,7 @@ const router = createBrowserRouter(
     { path: "/unidad/:unitId/assessment", element: <Assessment /> },
     { path: "/unidad/:unitId/speaking", element: <CharacterSelection /> },
     { path: "/speaking/:actividadId", element: <CharacterSelection /> },
-    { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> }
-
-
+    { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> },
   ],
   {
     future: {
@@ -92,6 +80,7 @@ function App() {
   return (
     <UserProvider>
       <RouterProvider router={router} />
+      <Toaster position="top-center" reverseOrder={false} /> {/* Toast global */}
     </UserProvider>
   );
 }

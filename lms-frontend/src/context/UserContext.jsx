@@ -7,12 +7,15 @@ import {
   clearUserFromLocalStorage,
 } from "../hooks/useUser";
 
+import { setSessionExpiredHandler } from "./sessionManager"; // 🆕 importante
+
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState({});
   const navigate = useNavigate();
 
+  // 🆕 Refresca el estado del usuario desde localStorage
   const refreshUser = () => {
     const userData = getUserFromLocalStorage();
     const token = localStorage.getItem("token");
@@ -24,32 +27,36 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  // 🧼 Limpia la sesión
   const logout = () => {
     clearUserFromLocalStorage();
-    localStorage.removeItem("token"); // Por si acaso
+    localStorage.removeItem("token");
     setUser({});
   };
 
+  // 🆕 Guarda usuario tras login
   const login = (userData) => {
     saveUserToLocalStorage(userData);
     setUser(userData);
   };
 
-  // 🆕 Función para manejar expiración de sesión
+  // 🛑 Maneja sesión caducada (se llama desde api.js → sessionManager)
   const handleSessionExpired = () => {
     logout();
 
-    // Aviso al usuario (temporal: se mejorará con toast/modal)
+    // 🧪 Por ahora: alerta simple (se reemplazará por toast o modal)
     alert("Tu sesión ha caducado. Serás redirigido al inicio de sesión.");
 
-    // Redirección al login tras 2 segundos
+    // Redirigir al login tras un pequeño delay
     setTimeout(() => {
       navigate("/");
     }, 2000);
   };
 
+  // ⏯️ Al montar: refrescar user y registrar el handler global
   useEffect(() => {
     refreshUser();
+    setSessionExpiredHandler(handleSessionExpired); // ⬅️ clave para api.js
   }, []);
 
   return (
@@ -60,7 +67,7 @@ export const UserProvider = ({ children }) => {
         refreshUser,
         login,
         logout,
-        handleSessionExpired, // 🆕 disponible para otros componentes
+        handleSessionExpired, // expuesto por si lo necesitas manualmente
       }}
     >
       {children}
@@ -68,5 +75,5 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// ✅ Hook personalizado para acceder al contexto
+// ✅ Hook personalizado para acceder al contexto de usuario
 export const useUser = () => useContext(UserContext);

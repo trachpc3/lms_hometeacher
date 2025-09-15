@@ -83,89 +83,90 @@ const ProductiveSkills = () => {
 
         setActividadId(actividad.id);
 
-        // 2) Intentar prompts por actividadId primero
-        let promptsData = null;
+       // 2) Intentar prompts por UNIDAD primero (para evitar el 404 innecesario)
+let promptsData = null;
 
-        // a) /productiveSkills/:actividadId/prompts
-        try {
-          const p1 = await fetch(
-            `${API_BASE_URL}/productiveSkills/${actividad.id}/prompts`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              credentials: "include",
-            }
-          );
-          const raw1 = await p1.text();
-          if (p1.ok) {
-            promptsData = parseJSONSafe(raw1);
-          } else {
-            // Si es 404 probamos el fallback por unidad:
-            if (p1.status !== 404) {
-              console.warn("⚠️ prompts por actividad devolvió error:", p1.status, raw1);
-            }
-          }
-        } catch (e) {
-          console.warn("⚠️ Error fetch prompts por actividadId:", e);
-        }
+// a) /actividades/unidad/:unitId/productiveSkills/prompts
+try {
+  const pUnit = await fetch(
+    `${API_BASE_URL}/actividades/unidad/${unitId}/productiveSkills/prompts`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+    }
+  );
+  const rawUnit = await pUnit.text();
+  if (pUnit.ok) {
+    promptsData = parseJSONSafe(rawUnit);
+  } else if (pUnit.status !== 404) {
+    // si no es 404, es un error real
+    throw new Error(
+      `Prompts por unidad falló (status ${pUnit.status}): ${rawUnit}`
+    );
+  }
+} catch (e) {
+  console.warn("⚠️ Error fetch prompts por UNIDAD:", e);
+}
 
-        // b) fallback: /actividades/unidad/:unitId/productiveSkills/prompts
-        if (!promptsData) {
-          const p2 = await fetch(
-            `${API_BASE_URL}/actividades/unidad/${unitId}/productiveSkills/prompts`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              credentials: "include",
-            }
-          );
-          const raw2 = await p2.text();
-          if (!p2.ok) {
-            throw new Error(
-              `No se pudieron cargar los prompts (status ${p2.status}): ${raw2}`
-            );
-          }
-          promptsData = parseJSONSafe(raw2);
-        }
+// b) Fallback: /productiveSkills/:actividadId/prompts (solo si no hubo datos)
+if (!promptsData) {
+  try {
+    const pAct = await fetch(
+      `${API_BASE_URL}/productiveSkills/${actividad.id}/prompts`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      }
+    );
+    const rawAct = await pAct.text();
+    if (pAct.ok) {
+      promptsData = parseJSONSafe(rawAct);
+    } else if (pAct.status !== 404) {
+      throw new Error(
+        `Prompts por actividad falló (status ${pAct.status}): ${rawAct}`
+      );
+    }
+  } catch (e) {
+    console.warn("⚠️ Error fetch prompts por ACTIVIDAD:", e);
+  }
+}
 
-        // Normalizar forma { writing, speaking }
-        let writing = "";
-        let speaking = "";
+// --- Normalización y setPrompts (igual que ya tenías) ---
+let writing = "";
+let speaking = "";
+if (promptsData) {
+  writing =
+    promptsData.writing ||
+    promptsData.escritura ||
+    promptsData.topicWriting ||
+    promptsData?.writingTopic ||
+    "";
+  speaking =
+    promptsData.speaking ||
+    promptsData.oral ||
+    promptsData.topicSpeaking ||
+    promptsData?.speakingTopic ||
+    "";
+  if (!writing && Array.isArray(promptsData)) {
+    const w = promptsData.find((x) => x.tipo?.toLowerCase().includes("writing"));
+    const s = promptsData.find((x) => x.tipo?.toLowerCase().includes("speaking"));
+    writing = w?.texto || w?.topic || writing;
+    speaking = s?.texto || s?.topic || speaking;
+  }
+}
+setPrompts({
+  writing: writing || "No hay topic de escritura disponible.",
+  speaking: speaking || "No hay topic de expresión oral disponible.",
+});
 
-        if (promptsData) {
-          // casos típicos
-          writing =
-            promptsData.writing ||
-            promptsData.escritura ||
-            promptsData.topicWriting ||
-            promptsData?.writingTopic ||
-            "";
-          speaking =
-            promptsData.speaking ||
-            promptsData.oral ||
-            promptsData.topicSpeaking ||
-            promptsData?.speakingTopic ||
-            "";
-
-          // por si viene como array
-          if (!writing && Array.isArray(promptsData)) {
-            const w = promptsData.find((x) => x.tipo?.toLowerCase().includes("writing"));
-            const s = promptsData.find((x) => x.tipo?.toLowerCase().includes("speaking"));
-            writing = w?.texto || w?.topic || writing;
-            speaking = s?.texto || s?.topic || speaking;
-          }
-        }
-
-        setPrompts({
-          writing: writing || "No hay topic de escritura disponible.",
-          speaking: speaking || "No hay topic de expresión oral disponible.",
-        });
       } catch (err) {
         console.error("❌ Error ProductiveSkills:", err);
         setErrorMsg(err.message || "Error desconocido al cargar la actividad.");

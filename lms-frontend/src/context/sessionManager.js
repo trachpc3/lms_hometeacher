@@ -1,7 +1,5 @@
-// src/sessionManager.js
-
 let onSessionExpired = () => {
-  console.warn("⚠️ No se ha registrado ninguna función para manejar sesión expirada.");
+  console.warn("⚠️ No se ha registrado ningún handler para sesión expirada.");
 };
 
 export const setSessionExpiredHandler = (callback) => {

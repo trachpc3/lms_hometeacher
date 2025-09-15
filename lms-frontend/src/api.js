@@ -1,22 +1,23 @@
-// src/api.js
 import axios from "axios";
 import { API_BASE_URL } from "./config";
+import { triggerSessionExpired } from "./context/sessionManager"; // 🆕 Importante
 
 // Instancia principal para toda la app
 const api = axios.create({
-  baseURL: API_BASE_URL,      // en prod: /api
-  withCredentials: true,      // ok en mismo origen; la cookie httpOnly viajará
+  baseURL: API_BASE_URL, // en prod: /api
+  withCredentials: true, // la cookie httpOnly viajará
   headers: { "Cache-Control": "no-cache" },
 });
 
 // === Token en cada request ===
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  console.log("🔐 Token enviado (api.js):", token);  // <— LOG CLAVE
-   if (token) config.headers.Authorization = `Bearer ${token}`;
+  console.log("🔐 Token enviado (api.js):", token);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
-
 
 // === Refresh automático ante 401 ===
 let isRefreshing = false;
@@ -50,7 +51,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Marca para evitar bucle
     original._retry = true;
 
     // Cola si ya hay un refresh en curso
@@ -60,26 +60,27 @@ api.interceptors.response.use(
       });
     }
 
-    // Dispara refresh
     isRefreshing = true;
+
     try {
-      const { data } = await refreshClient.post("/auth/refresh"); // cookie viaja sola
+      const { data } = await refreshClient.post("/auth/refresh");
       const newToken = data?.token;
       if (!newToken) throw new Error("Refresh sin token");
 
       localStorage.setItem("token", newToken);
 
-      // Reintenta la request original con el token nuevo
       original.headers.Authorization = `Bearer ${newToken}`;
 
-      // Libera la cola
       processQueue(null, newToken);
 
       return api(original);
     } catch (err) {
-      // Falla el refresh → limpiar sesión y propagar error
       localStorage.removeItem("token");
       processQueue(err, null);
+
+      // 🛑 Notifica que la sesión ha expirado
+      triggerSessionExpired(); // ⬅️ Llama a handleSessionExpired() vía sessionManager
+
       return Promise.reject(err);
     } finally {
       isRefreshing = false;

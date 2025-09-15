@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL } from '../config'; 
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Home } from "lucide-react";
@@ -92,49 +92,45 @@ const UnitDashboard = () => {
       className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative"
       style={{ backgroundImage: `url('/pics/${unitId}.jpg')` }}
     >
-      {/* Overlay para contraste */}
-      <div className="fixed inset-0 bg-white/30 backdrop-blur-sm pointer-events-none" />
+      {/* Overlay con más opacidad para contraste */}
+      <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
 
-      {/* Header FIJO */}
-      <header className="fixed top-0 inset-x-0 h-16 bg-white/90 backdrop-blur border-b shadow-md z-50">
-        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={logo} alt="Logo" className="h-10 w-auto" />
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Unit {unitId}: {unitTitle}
-            </h1>
-          </div>
-          <Link
-            to="/home"
-            onClick={() => localStorage.setItem("lastLevel", currentLevel)}
-            className="flex items-center gap-2 text-blue-600 font-semibold hover:underline"
-          >
-            <Home size={22} />
-            Volver
-          </Link>
+      {/* Header FIJO con mismo estilo de antes */}
+      <header className="fixed top-0 inset-x-0 h-16 bg-white shadow-md flex items-center justify-between px-6 border-b z-50">
+        <div className="flex items-center gap-4">
+          <img src={logo} alt="Logo" className="h-10 w-auto" />
+          <h1 className="text-2xl font-bold text-gray-800">
+            Unit {unitId}: {unitTitle}
+          </h1>
         </div>
+        <Link
+          to="/home"
+          onClick={() => localStorage.setItem("lastLevel", currentLevel)}
+          className="flex items-center gap-2 text-blue-600 font-semibold hover:underline"
+        >
+          <Home size={24} />
+          Volver
+        </Link>
       </header>
 
-      {/* MAIN: ocupa todo el alto restante y centra el grid */}
+      {/* MAIN centrado */}
       <main
-        className="flex-1 flex items-center justify-center px-6"
-        style={{ paddingTop: HEADER_HEIGHT + 24 }} // deja hueco bajo el header
+        className="flex-1 flex items-center justify-center px-6 relative z-10"
+        style={{ paddingTop: HEADER_HEIGHT }}
       >
-        <div className="relative z-10 w-full max-w-6xl">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="w-full max-w-6xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-12">
             {cards.map((card, index) => (
               <Link
                 key={index}
                 to={card.link}
-                className="relative bg-white/85 backdrop-blur rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1"
+                className="relative bg-white shadow-xl rounded-xl p-8 hover:shadow-2xl transition transform hover:scale-105 backdrop-blur-md bg-opacity-80 text-center flex flex-col items-center"
               >
-                <div
-                  className={`absolute -top-6 -left-6 w-16 h-16 flex items-center justify-center rounded-xl text-white shadow-lg ${card.bgColor}`}
-                >
+                <div className={`absolute -top-6 -left-6 w-16 h-16 flex items-center justify-center rounded-lg text-white shadow-lg ${card.bgColor}`}>
                   <span className="text-3xl">{card.icon}</span>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mt-6">{card.title}</h2>
-                <p className="text-gray-600 text-base mt-2">{card.description}</p>
+                <p className="text-gray-600 text-lg mt-2">{card.description}</p>
               </Link>
             ))}
           </div>

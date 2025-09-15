@@ -78,11 +78,13 @@ const router = createBrowserRouter(
 
 function App() {
   return (
-    <UserProvider>
-      <RouterProvider router={router} />
-      <Toaster position="top-center" reverseOrder={false} /> {/* Toast global */}
-    </UserProvider>
+    <RouterProvider router={router}>
+      <UserProvider>
+        <Toaster position="top-center" reverseOrder={false} />
+      </UserProvider>
+    </RouterProvider>
   );
 }
+
 
 export default App;

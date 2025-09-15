@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 import {
   getUserFromLocalStorage,
@@ -7,7 +8,7 @@ import {
   clearUserFromLocalStorage,
 } from "../hooks/useUser";
 
-import { setSessionExpiredHandler } from "./sessionManager"; // 🆕 importante
+import { setSessionExpiredHandler } from "./sessionManager"; // ruta ajustada ✅
 
 export const UserContext = createContext();
 
@@ -15,7 +16,6 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState({});
   const navigate = useNavigate();
 
-  // 🆕 Refresca el estado del usuario desde localStorage
   const refreshUser = () => {
     const userData = getUserFromLocalStorage();
     const token = localStorage.getItem("token");
@@ -27,36 +27,32 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // 🧼 Limpia la sesión
   const logout = () => {
     clearUserFromLocalStorage();
     localStorage.removeItem("token");
     setUser({});
   };
 
-  // 🆕 Guarda usuario tras login
   const login = (userData) => {
     saveUserToLocalStorage(userData);
     setUser(userData);
   };
 
-  // 🛑 Maneja sesión caducada (se llama desde api.js → sessionManager)
   const handleSessionExpired = () => {
     logout();
 
-    // 🧪 Por ahora: alerta simple (se reemplazará por toast o modal)
-    alert("Tu sesión ha caducado. Serás redirigido al inicio de sesión.");
+    toast.error("Tu sesión ha caducado. Serás redirigido al login.", {
+      duration: 3000,
+    });
 
-    // Redirigir al login tras un pequeño delay
     setTimeout(() => {
       navigate("/");
-    }, 2000);
+    }, 3000);
   };
 
-  // ⏯️ Al montar: refrescar user y registrar el handler global
   useEffect(() => {
     refreshUser();
-    setSessionExpiredHandler(handleSessionExpired); // ⬅️ clave para api.js
+    setSessionExpiredHandler(handleSessionExpired); // ⬅️ conectar
   }, []);
 
   return (
@@ -67,7 +63,7 @@ export const UserProvider = ({ children }) => {
         refreshUser,
         login,
         logout,
-        handleSessionExpired, // expuesto por si lo necesitas manualmente
+        handleSessionExpired,
       }}
     >
       {children}
@@ -75,5 +71,4 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// ✅ Hook personalizado para acceder al contexto de usuario
 export const useUser = () => useContext(UserContext);

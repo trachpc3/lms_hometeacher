@@ -6,13 +6,15 @@ import logo from "../assets/loog.png";
 import { getUserFromLocalStorage } from "../hooks/useUser";
 import { fetchUnits } from "../services/unitsService";
 
+const HEADER_HEIGHT = 64; // h-16
+
 const UnitDashboard = () => {
   const { unitId } = useParams();
   const navigate = useNavigate();
   const [unitTitle, setUnitTitle] = useState(`Unit ${unitId}`);
   const [units, setUnits] = useState([]);
   const [user, setUser] = useState(null);
-  const [hasAccess, setHasAccess] = useState(true); // ✅ estado controlado
+  const [hasAccess, setHasAccess] = useState(true);
   const currentLevel = localStorage.getItem("lastLevel") || "Beginners";
 
   useEffect(() => {
@@ -37,17 +39,14 @@ const UnitDashboard = () => {
         const unidadesDesbloqueadas = await fetchUnits(currentLevel);
         setUnits(unidadesDesbloqueadas);
 
-        const unlocked = parseInt(unitId) === 1 ||
+        const unlocked =
+          parseInt(unitId) === 1 ||
           unidadesDesbloqueadas.some(
             (unit) => unit.id === parseInt(unitId) && unit.unlocked
           );
 
         setHasAccess(unlocked);
-
-        if (!unlocked) {
-          console.warn(`🚫 Unidad ${unitId} bloqueada para ${user.nombre}`);
-          navigate("/home");
-        }
+        if (!unlocked) navigate("/home");
       } catch (error) {
         console.error("❌ Error cargando unidades:", error);
         setHasAccess(false);
@@ -63,11 +62,8 @@ const UnitDashboard = () => {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(`${API_BASE_URL}/unidades/${unitId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
         if (!response.ok) throw new Error(`Error en la API: ${response.status}`);
         const data = await response.json();
         setUnitTitle(data.titulo || `Unit ${unitId}`);
@@ -75,7 +71,6 @@ const UnitDashboard = () => {
         console.error("❌ Error en la petición de unidad:", error);
       }
     };
-
     fetchUnitTitle();
   }, [unitId]);
 
@@ -90,49 +85,61 @@ const UnitDashboard = () => {
     { title: "Productive Skills", description: "Expresión escrita y hablada", icon: "✍️", link: `/unidad/${unitId}/productiveSkills`, bgColor: "bg-[#2196F3]" },
   ];
 
-  if (!hasAccess) return null; // ✅ evita render si no hay acceso
+  if (!hasAccess) return null;
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden">
-      <header className="sticky top-0 w-full bg-white shadow-md flex items-center justify-between px-6 py-4 border-b z-50">
-        <div className="flex items-center gap-4">
-          <img src={logo} alt="Logo" className="h-10 w-auto" />
-          <h1 className="text-2xl font-bold text-gray-800">
-            Unit {unitId}: {unitTitle}
-          </h1>
+    <div
+      className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url('/pics/${unitId}.jpg')` }}
+    >
+      {/* Overlay para contraste */}
+      <div className="fixed inset-0 bg-white/30 backdrop-blur-sm pointer-events-none" />
+
+      {/* Header FIJO */}
+      <header className="fixed top-0 inset-x-0 h-16 bg-white/90 backdrop-blur border-b shadow-md z-50">
+        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src={logo} alt="Logo" className="h-10 w-auto" />
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+              Unit {unitId}: {unitTitle}
+            </h1>
+          </div>
+          <Link
+            to="/home"
+            onClick={() => localStorage.setItem("lastLevel", currentLevel)}
+            className="flex items-center gap-2 text-blue-600 font-semibold hover:underline"
+          >
+            <Home size={22} />
+            Volver
+          </Link>
         </div>
-        <Link
-          to="/home"
-          onClick={() => localStorage.setItem("lastLevel", currentLevel)}
-          className="flex items-center gap-2 text-blue-600 font-semibold hover:underline"
-        >
-          <Home size={24} />
-          Volver
-        </Link>
       </header>
 
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-40"
-        style={{ backgroundImage: `url('/pics/${unitId}.jpg')` }}
-      ></div>
-
-      <div className="relative z-10 min-h-screen flex flex-col items-center p-10 backdrop-blur-md mt-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-12">
-          {cards.map((card, index) => (
-            <Link
-              key={index}
-              to={card.link}
-              className="relative bg-white shadow-xl rounded-xl p-8 hover:shadow-2xl transition transform hover:scale-105 backdrop-blur-md bg-opacity-80 text-center flex flex-col items-center"
-            >
-              <div className={`absolute -top-6 -left-6 w-16 h-16 flex items-center justify-center rounded-lg text-white shadow-lg ${card.bgColor}`}>
-                <span className="text-3xl">{card.icon}</span>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mt-6">{card.title}</h2>
-              <p className="text-gray-600 text-lg mt-2">{card.description}</p>
-            </Link>
-          ))}
+      {/* MAIN: ocupa todo el alto restante y centra el grid */}
+      <main
+        className="flex-1 flex items-center justify-center px-6"
+        style={{ paddingTop: HEADER_HEIGHT + 24 }} // deja hueco bajo el header
+      >
+        <div className="relative z-10 w-full max-w-6xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {cards.map((card, index) => (
+              <Link
+                key={index}
+                to={card.link}
+                className="relative bg-white/85 backdrop-blur rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1"
+              >
+                <div
+                  className={`absolute -top-6 -left-6 w-16 h-16 flex items-center justify-center rounded-xl text-white shadow-lg ${card.bgColor}`}
+                >
+                  <span className="text-3xl">{card.icon}</span>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mt-6">{card.title}</h2>
+                <p className="text-gray-600 text-base mt-2">{card.description}</p>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

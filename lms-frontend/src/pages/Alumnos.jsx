@@ -1,137 +1,226 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Pencil, Trash, PlusCircle, Search } from "lucide-react";
 import { fetchAlumnos, addAlumno, updateAlumno, deleteAlumno } from "../services/alumnosService";
 import AlumnoModal from "../components/AlumnoModal";
 
-const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-    }).replace(/\//g, ".");
+const formatDate = (value) => {
+  if (!value) return "N/A";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "N/A";
+  return d
+    .toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+    .replace(/\//g, ".");
 };
 
 const Alumnos = () => {
-    const [alumnos, setAlumnos] = useState([]);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editData, setEditData] = useState(null);
-    const [filtroCampo, setFiltroCampo] = useState("nombre");
-    const [filtroTexto, setFiltroTexto] = useState("");
+  const [alumnos, setAlumnos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
 
-    useEffect(() => {
-        cargarAlumnos();
-    }, []);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
 
-    const cargarAlumnos = async () => {
-        const data = await fetchAlumnos();
-        setAlumnos(data);
-    };
+  const [filtroCampo, setFiltroCampo] = useState("nombre");
+  const [filtroTexto, setFiltroTexto] = useState("");
 
-    const handleSave = async (alumno) => {
-        if (editData) {
-            await updateAlumno(editData.id, alumno);
-        } else {
-            await addAlumno(alumno);
-        }
-        setModalOpen(false);
-        setEditData(null);
-        cargarAlumnos();
-    };
+  useEffect(() => {
+    cargarAlumnos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const handleDelete = async (id) => {
-        if (window.confirm("¿Estás seguro de eliminar este alumno?")) {
-            await deleteAlumno(id);
-            cargarAlumnos();
-        }
-    };
+  const cargarAlumnos = async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const resp = await fetchAlumnos();
+      // el backend puede devolver array directo o { data: [...] }
+      const list = Array.isArray(resp) ? resp : resp?.data || [];
+      setAlumnos(list);
+    } catch (e) {
+      console.error("Error cargando alumnos:", e);
+      setErr("No se pudo cargar la lista de alumnos.");
+      setAlumnos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const alumnosFiltrados = alumnos.filter(alumno =>
-        alumno[filtroCampo]?.toLowerCase().includes(filtroTexto.toLowerCase())
-    );
+  const handleSave = async (alumno) => {
+    try {
+      if (editData) {
+        await updateAlumno(editData.id, alumno);
+      } else {
+        await addAlumno(alumno);
+      }
+      setModalOpen(false);
+      setEditData(null);
+      await cargarAlumnos();
+    } catch (e) {
+      console.error("Error guardando alumno:", e);
+      alert("No se pudo guardar el alumno.");
+    }
+  };
 
-    return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-700">Mis Alumnos</h1>
-                <button 
-                    onClick={() => { setEditData(null); setModalOpen(true); }} 
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                >
-                    <PlusCircle size={18} /> Agregar Alumno
-                </button>
-            </div>
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de eliminar (desactivar) este alumno?")) return;
+    try {
+      await deleteAlumno(id);
+      await cargarAlumnos();
+    } catch (e) {
+      console.error("Error eliminando alumno:", e);
+      alert("No se pudo eliminar el alumno.");
+    }
+  };
 
-            <div className="flex gap-2 mb-4">
-                <select 
-                    value={filtroCampo} 
-                    onChange={(e) => setFiltroCampo(e.target.value)}
-                    className="border p-2 rounded-lg"
-                >
-                    <option value="nombre">Nombre</option>
-                    <option value="email">Email</option>
-                    <option value="telefono">Teléfono</option>
-                </select>
-                <div className="relative w-full">
-                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input 
-                        type="text" 
-                        placeholder="Buscar..." 
-                        value={filtroTexto} 
-                        onChange={(e) => setFiltroTexto(e.target.value)} 
-                        className="w-full pl-10 p-2 border rounded-lg"
-                    />
-                </div>
-            </div>
+  // Campo de curso tolerante: curso_nombre (JOIN) o curso_matriculado (texto legacy)
+  const getCurso = (a) => a?.curso_nombre || a?.curso_matriculado || "N/A";
 
-            <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-200">
-                        <th className="p-3 text-left">Nombre</th>
-                        <th className="p-3 text-left">Email</th>
-                        <th className="p-3 text-left">Teléfono</th>
-                        <th className="p-3 text-left">Fecha Registro</th>
-                        <th className="p-3 text-left">Fecha Baja</th>
-                        <th className="p-3 text-left">Estado</th>
-                        <th className="p-3 text-left">Curso</th>
-                        <th className="p-3 text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {alumnosFiltrados.length === 0 ? (
-                        <tr>
-                            <td colSpan="8" className="text-center p-3 text-gray-500">
-                                No hay alumnos encontrados
-                            </td>
-                        </tr>
-                    ) : (
-                        alumnosFiltrados.map((alumno) => (
-                            <tr key={alumno.id} className="border-b hover:bg-gray-100">
-                                <td className="p-3">{alumno.nombre}</td>
-                                <td className="p-3">{alumno.email}</td>
-                                <td className="p-3">{alumno.telefono || "N/A"}</td>
-                                <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
-                                <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
-                                <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
-                                <td className="p-3">{alumno.curso_matriculado || "N/A"}</td>
-                                <td className="p-3 flex justify-center gap-3">
-                                    <button onClick={() => { setEditData(alumno); setModalOpen(true); }} className="text-blue-600">
-                                        <Pencil size={18} />
-                                    </button>
-                                    <button onClick={() => handleDelete(alumno.id)} className="text-red-600">
-                                        <Trash size={18} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+  // Campo estado mostrado: puedes elegir entre estado (activo/inactivo) o estado_formacion (demo/matriculado...)
+  const getEstado = (a) => a?.estado_formacion || a?.estado || "N/A";
 
-            {modalOpen && <AlumnoModal onClose={() => setModalOpen(false)} onSave={handleSave} editData={editData} />}
+  const alumnosFiltrados = useMemo(() => {
+    const term = (filtroTexto || "").toLowerCase().trim();
+    if (!term) return alumnos;
+
+    return alumnos.filter((a) => {
+      let val = "";
+      switch (filtroCampo) {
+        case "nombre":
+          val = `${a?.nombre || ""} ${a?.apellidos || ""}`;
+          break;
+        case "email":
+          val = a?.email || "";
+          break;
+        case "telefono":
+          val = a?.telefono || "";
+          break;
+        case "curso":
+          val = getCurso(a);
+          break;
+        default:
+          val = String(a?.[filtroCampo] ?? "");
+      }
+      return val.toLowerCase().includes(term);
+    });
+  }, [alumnos, filtroCampo, filtroTexto]);
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-700">Mis Alumnos</h1>
+        <button
+          onClick={() => {
+            setEditData(null);
+            setModalOpen(true);
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow"
+        >
+          <PlusCircle size={18} /> Agregar Alumno
+        </button>
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        <select
+          value={filtroCampo}
+          onChange={(e) => setFiltroCampo(e.target.value)}
+          className="border p-2 rounded-lg"
+        >
+          <option value="nombre">Nombre</option>
+          <option value="email">Email</option>
+          <option value="telefono">Teléfono</option>
+          <option value="curso">Curso</option>
+        </select>
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Buscar..."
+            value={filtroTexto}
+            onChange={(e) => setFiltroTexto(e.target.value)}
+            className="w-full pl-10 p-2 border rounded-lg"
+          />
         </div>
-    );
+      </div>
+
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-100 text-gray-700">
+              <th className="p-3 text-left">Nombre</th>
+              <th className="p-3 text-left">Email</th>
+              <th className="p-3 text-left">Teléfono</th>
+              <th className="p-3 text-left">Fecha Registro</th>
+              <th className="p-3 text-left">Fecha Baja</th>
+              <th className="p-3 text-left">Estado</th>
+              <th className="p-3 text-left">Curso</th>
+              <th className="p-3 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="8" className="text-center p-6 text-gray-500">
+                  Cargando...
+                </td>
+              </tr>
+            ) : err ? (
+              <tr>
+                <td colSpan="8" className="text-center p-6 text-red-600">
+                  {err}
+                </td>
+              </tr>
+            ) : alumnosFiltrados.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center p-6 text-gray-500">
+                  No hay alumnos encontrados
+                </td>
+              </tr>
+            ) : (
+              alumnosFiltrados.map((alumno) => (
+                <tr key={alumno.id} className="border-b hover:bg-gray-50">
+                  <td className="p-3">
+                    {alumno.nombre} {alumno.apellidos ? ` ${alumno.apellidos}` : ""}
+                  </td>
+                  <td className="p-3">{alumno.email}</td>
+                  <td className="p-3">{alumno.telefono || "N/A"}</td>
+                  <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
+                  {/* si backend no envía fecha_baja en el SELECT, quedará N/A */}
+                  <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
+                  <td className="p-3">{getEstado(alumno)}</td>
+                  <td className="p-3">{getCurso(alumno)}</td>
+                  <td className="p-3">
+                    <div className="flex justify-center gap-3">
+                      <button
+                        onClick={() => {
+                          setEditData(alumno);
+                          setModalOpen(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Editar"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(alumno.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Eliminar"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modalOpen && (
+        <AlumnoModal onClose={() => setModalOpen(false)} onSave={handleSave} editData={editData} />
+      )}
+    </div>
+  );
 };
 
 export default Alumnos;

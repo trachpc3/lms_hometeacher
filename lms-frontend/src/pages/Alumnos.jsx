@@ -21,14 +21,16 @@ const Alumnos = () => {
   const [editData, setEditData] = useState(null);
   const [filtroCampo, setFiltroCampo] = useState("nombre");
   const [filtroTexto, setFiltroTexto] = useState("");
-  const [soloMisAlumnos, setSoloMisAlumnos] = useState(false); // 👈 nuevo estado
+  const [soloMisAlumnos, setSoloMisAlumnos] = useState(false); // 👈 toggle
 
   useEffect(() => {
     cargarAlumnos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soloMisAlumnos]); // 👈 recarga al cambiar
 
   const cargarAlumnos = async () => {
-    const data = await fetchAlumnos();
+    const params = soloMisAlumnos ? { mine: 1 } : {};
+    const data = await fetchAlumnos(params);
     setAlumnos(data);
   };
 
@@ -50,9 +52,14 @@ const Alumnos = () => {
     }
   };
 
-  const alumnosFiltrados = alumnos.filter((alumno) =>
-    alumno[filtroCampo]?.toLowerCase().includes(filtroTexto.toLowerCase())
-  );
+  const alumnosFiltrados = alumnos.filter((alumno) => {
+    const term = (filtroTexto || "").toLowerCase();
+    const val =
+      filtroCampo === "nombre"
+        ? `${alumno.nombre || ""} ${alumno.apellidos || ""}`.toLowerCase()
+        : String(alumno[filtroCampo] || "").toLowerCase();
+    return val.includes(term);
+  });
 
   return (
     <div className="p-6">
@@ -151,7 +158,7 @@ const Alumnos = () => {
                 <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
                 <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
                 <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
-                <td className="p-3">{alumno.curso_matriculado || "N/A"}</td>
+                <td className="p-3">{alumno.curso_nombre || alumno.curso_matriculado || "N/A"}</td>
                 <td className="p-3 flex justify-center gap-3">
                   <button
                     onClick={() => {

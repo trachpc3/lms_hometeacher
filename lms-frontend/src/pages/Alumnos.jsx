@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash, PlusCircle, Search } from "lucide-react";
-import { fetchAlumnos, addAlumno, updateAlumno, deleteAlumno } from "../services/alumnosService";
+import {
+  fetchAlumnos,
+  addAlumno,
+  updateAlumno,
+  deleteAlumno,
+  fetchContadoresAlumnos,
+} from "../services/alumnosService";
 import AlumnoModal from "../components/AlumnoModal";
 
 const formatDate = (dateString) => {
@@ -21,17 +27,46 @@ const Alumnos = () => {
   const [editData, setEditData] = useState(null);
   const [filtroCampo, setFiltroCampo] = useState("nombre");
   const [filtroTexto, setFiltroTexto] = useState("");
-  const [soloMisAlumnos, setSoloMisAlumnos] = useState(false); // 👈 toggle
+  const [soloMisAlumnos, setSoloMisAlumnos] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+
+  const [totalAlumnos, setTotalAlumnos] = useState(0);
+  const [misAlumnos, setMisAlumnos] = useState(0);
 
   useEffect(() => {
     cargarAlumnos();
+    cargarContadores();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [soloMisAlumnos]); // 👈 recarga al cambiar
+  }, [soloMisAlumnos, filtroTexto, filtroCampo, page]);
 
   const cargarAlumnos = async () => {
-    const params = soloMisAlumnos ? { mine: 1 } : {};
-    const data = await fetchAlumnos(params);
-    setAlumnos(data);
+    const params = {
+      mine: soloMisAlumnos ? 1 : undefined,
+      page,
+      limit: 10,
+    };
+
+    if (filtroTexto) {
+      params.q = filtroTexto;
+    }
+
+    const res = await fetchAlumnos(params);
+    setAlumnos(res.alumnos);
+    setTotal(res.total);
+    setPages(res.pages);
+  };
+
+  const cargarContadores = async () => {
+    try {
+      const res = await fetchContadoresAlumnos();
+      setTotalAlumnos(res.totalAlumnos);
+      setMisAlumnos(res.misAlumnos);
+    } catch (error) {
+      console.error("Error cargando contadores:", error);
+    }
   };
 
   const handleSave = async (alumno) => {
@@ -43,23 +78,24 @@ const Alumnos = () => {
     setModalOpen(false);
     setEditData(null);
     cargarAlumnos();
+    cargarContadores();
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("¿Estás seguro de eliminar este alumno?")) {
       await deleteAlumno(id);
       cargarAlumnos();
+      cargarContadores();
     }
   };
 
-  const alumnosFiltrados = alumnos.filter((alumno) => {
-    const term = (filtroTexto || "").toLowerCase();
-    const val =
-      filtroCampo === "nombre"
-        ? `${alumno.nombre || ""} ${alumno.apellidos || ""}`.toLowerCase()
-        : String(alumno[filtroCampo] || "").toLowerCase();
-    return val.includes(term);
-  });
+  const handleAnterior = () => {
+    if (page > 1) setPage(page - 1);
+  };
+
+  const handleSiguiente = () => {
+    if (page < pages) setPage(page + 1);
+  };
 
   return (
     <div className="p-6">
@@ -71,7 +107,10 @@ const Alumnos = () => {
           <div className="inline-flex rounded-lg overflow-hidden border">
             <button
               type="button"
-              onClick={() => setSoloMisAlumnos(false)}
+              onClick={() => {
+                setPage(1);
+                setSoloMisAlumnos(false);
+              }}
               className={`px-3 py-2 text-sm ${
                 !soloMisAlumnos
                   ? "bg-blue-600 text-white"
@@ -82,7 +121,10 @@ const Alumnos = () => {
             </button>
             <button
               type="button"
-              onClick={() => setSoloMisAlumnos(true)}
+              onClick={() => {
+                setPage(1);
+                setSoloMisAlumnos(true);
+              }}
               className={`px-3 py-2 text-sm border-l ${
                 soloMisAlumnos
                   ? "bg-blue-600 text-white"
@@ -122,10 +164,24 @@ const Alumnos = () => {
             type="text"
             placeholder="Buscar..."
             value={filtroTexto}
-            onChange={(e) => setFiltroTexto(e.target.value)}
+            onChange={(e) => {
+              setFiltroTexto(e.target.value);
+              setPage(1);
+            }}
             className="w-full pl-10 p-2 border rounded-lg"
           />
         </div>
+      </div>
+
+      {/* 📊 Contadores */}
+      <div className="mb-2 text-sm text-gray-700">
+        Total alumnos: <strong>{totalAlumnos}</strong> — Mis alumnos:{" "}
+        <strong>{misAlumnos}</strong>
+      </div>
+
+      {/* 📊 Info paginación */}
+      <div className="mb-4 text-sm text-gray-600">
+        Página {page} de {pages} — Resultados actuales: {alumnos.length}
       </div>
 
       {/* 📋 Tabla */}
@@ -143,14 +199,14 @@ const Alumnos = () => {
           </tr>
         </thead>
         <tbody>
-          {alumnosFiltrados.length === 0 ? (
+          {alumnos.length === 0 ? (
             <tr>
               <td colSpan="8" className="text-center p-3 text-gray-500">
                 No hay alumnos encontrados
               </td>
             </tr>
           ) : (
-            alumnosFiltrados.map((alumno) => (
+            alumnos.map((alumno) => (
               <tr key={alumno.id} className="border-b hover:bg-gray-100">
                 <td className="p-3">{alumno.nombre}</td>
                 <td className="p-3">{alumno.email}</td>
@@ -158,7 +214,9 @@ const Alumnos = () => {
                 <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
                 <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
                 <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
-                <td className="p-3">{alumno.curso_nombre || alumno.curso_matriculado || "N/A"}</td>
+                <td className="p-3">
+                  {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
+                </td>
                 <td className="p-3 flex justify-center gap-3">
                   <button
                     onClick={() => {
@@ -181,6 +239,29 @@ const Alumnos = () => {
           )}
         </tbody>
       </table>
+
+      {/* 🔄 Paginación */}
+      {pages > 1 && (
+        <div className="mt-6 flex justify-center gap-4 items-center text-sm">
+          <button
+            onClick={handleAnterior}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+          >
+            ← Anterior
+          </button>
+          <span>
+            Página <strong>{page}</strong> de <strong>{pages}</strong>
+          </span>
+          <button
+            onClick={handleSiguiente}
+            disabled={page === pages}
+            className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+          >
+            Siguiente →
+          </button>
+        </div>
+      )}
 
       {modalOpen && (
         <AlumnoModal

@@ -29,21 +29,53 @@ const Alumnos = () => {
   }, []);
 
   const cargarAlumnos = async () => {
-    setLoading(true);
-    setErr(null);
+  setLoading(true);
+  setErr(null);
+
+  try {
+    const token = localStorage.getItem("token"); // <-- ¿existe?
+    console.log("🔑 token (localStorage):", token ? token.slice(0, 16) + "..." : "(no hay)");
+
+    const resp = await fetch("/api/alumnos", {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include", // por si usas cookie de refresh
+    });
+
+    console.log("🌐 GET /api/alumnos -> status:", resp.status);
+
+    const text = await resp.text();
+    console.log("📦 body (raw):", text);
+
+    // intenta parsear JSON (si es JSON)
+    let data;
     try {
-      const resp = await fetchAlumnos();
-      // el backend puede devolver array directo o { data: [...] }
-      const list = Array.isArray(resp) ? resp : resp?.data || [];
-      setAlumnos(list);
-    } catch (e) {
-      console.error("Error cargando alumnos:", e);
-      setErr("No se pudo cargar la lista de alumnos.");
-      setAlumnos([]);
-    } finally {
-      setLoading(false);
+      data = JSON.parse(text);
+    } catch {
+      data = null;
     }
-  };
+
+    // normaliza a lista
+    const list = Array.isArray(data) ? data : data?.data || [];
+
+    // pinta algo de diagnóstico útil
+    console.log("🧮 parsed list length:", Array.isArray(list) ? list.length : "(no array)");
+
+    if (!resp.ok) {
+      setErr(data?.message || `HTTP ${resp.status}`);
+      setAlumnos([]);
+    } else {
+      setAlumnos(list);
+    }
+  } catch (e) {
+    console.error("❌ Error fetch /api/alumnos:", e);
+    setErr(e.message || "Error de red");
+    setAlumnos([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleSave = async (alumno) => {
     try {

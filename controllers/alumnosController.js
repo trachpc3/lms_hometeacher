@@ -1,3 +1,4 @@
+// controllers/alumnosController.js
 import bcrypt from "bcryptjs";
 import pool from "../models/db.js";
 import { resolveCursoId } from "../utils/cursos.js";
@@ -27,8 +28,8 @@ export const addAlumno = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO usuarios
-       (nombre, apellidos, telefono, email, password, rol, profesor_asignado, curso_id, estado_formacion, observaciones)
-       VALUES (?, ?, ?, ?, ?, 'estudiante', ?, ?, ?, ?)`,
+       (nombre, apellidos, telefono, email, password, rol, profesor_asignado, curso_id, estado_formacion, observaciones, estado)
+       VALUES (?, ?, ?, ?, ?, 'estudiante', ?, ?, ?, ?, 'activo')`,
       [nombre, apellidos, telefono, email, hashedPassword, profesor, resolvedCursoId, estado_formacion, observaciones]
     );
 
@@ -39,36 +40,68 @@ export const addAlumno = async (req, res) => {
   }
 };
 
-/** ✅ Obtener alumnos (JOIN cursos) + ámbito opcional por profesor */
+/** ✅ Obtener alumnos (JOIN cursos)
+ *  Profesores: por defecto ven TODOS. Si ?mine=1|true, solo los suyos.
+ *  Filtros opcionales: estado, estado_formacion, q (busca en nombre/apellidos/email)
+ */
 export const getAlumnos = async (req, res) => {
   try {
     const where = ["u.rol = 'estudiante'"];
     const params = [];
 
-    // Si utilizas authMiddleware y quieres acotar por profesor:
-    if (req.userRole === "profesor") {
+    // Ámbito opcional "solo mis alumnos"
+    const mine = String(req.query.mine || "").toLowerCase();
+    const onlyMine = req.userRole === "profesor" && (mine === "1" || mine === "true");
+    if (onlyMine) {
       where.push("u.profesor_asignado = ?");
       params.push(req.userId);
     }
 
-    const whereSql = `WHERE ${where.join(" AND ")}`;
+    // Filtros sencillos
+    if (req.query.estado) {
+      where.push("u.estado = ?");
+      params.push(req.query.estado);
+    }
+    if (req.query.estado_formacion) {
+      where.push("u.estado_formacion = ?");
+      params.push(req.query.estado_formacion);
+    }
+    if (req.query.q) {
+      const q = `%${req.query.q}%`;
+      where.push("(u.nombre LIKE ? OR u.apellidos LIKE ? OR u.email LIKE ?)");
+      params.push(q, q, q);
+    }
 
-    const [rows] = await pool.query(
-      `SELECT u.id, u.nombre, u.apellidos, u.email, u.telefono, u.imagen,
-              u.estado, u.estado_formacion, u.progreso_global,
-              u.profesor_asignado, u.curso_id, c.nombre AS curso_nombre,
-              u.fecha_registro, u.ultima_sesion
-       FROM usuarios u
-       LEFT JOIN cursos c ON c.id = u.curso_id
-       ${whereSql}
-       ORDER BY u.fecha_registro DESC`
-      , params
-    );
+    const sql = `
+      SELECT
+        u.id,
+        u.nombre,
+        u.apellidos,
+        u.email,
+        u.telefono,
+        u.imagen,
+        u.estado,
+        u.estado_formacion,
+        u.progreso_global,
+        u.profesor_asignado,
+        u.curso_id,
+        c.nombre AS curso_nombre,
+        u.curso_matriculado,       -- legacy (por compatibilidad UI)
+        u.fecha_registro,
+        u.fecha_baja,
+        u.ultima_sesion
+      FROM usuarios u
+      LEFT JOIN cursos c ON c.id = u.curso_id
+      WHERE ${where.join(" AND ")}
+      ORDER BY u.nombre ASC, u.id DESC
+      LIMIT 500
+    `;
 
-    res.json(rows);
+    const [rows] = await pool.query(sql, params);
+    return res.json(rows);
   } catch (error) {
     console.error("💥 Error al obtener alumnos:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
 

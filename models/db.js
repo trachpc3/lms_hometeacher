@@ -1,3 +1,4 @@
+// models/db.js
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 dotenv.config();
@@ -10,14 +11,20 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  charset: "utf8mb4", // ✅ nivel conexión
+  charset: "utf8mb4", // ✅
 });
 
-// ✅ Forzar collation/charset en CADA conexión creada por el pool
-pool.on?.("connection", (conn) => {
-  conn.query("SET NAMES utf8mb4 COLLATE utf8mb4_uca1400_ai_ci").catch((e) => {
-    console.error("SET NAMES failed:", e?.message || e);
-  });
-});
+// ⚙️ Inicialización de sesión (promise API)
+(async () => {
+  try {
+    const conn = await pool.getConnection();
+    // En MariaDB: collation moderna que ya pusimos en el servidor/tabla
+    await conn.query("SET NAMES utf8mb4 COLLATE utf8mb4_uca1400_ai_ci");
+    conn.release();
+    // console.log("✅ DB session init OK");
+  } catch (e) {
+    console.error("⚠️ DB session init failed:", e?.message || e);
+  }
+})();
 
 export default pool;

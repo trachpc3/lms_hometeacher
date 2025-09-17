@@ -68,3 +68,12 @@ export async function updateAlumno(id, alumno) {
 export async function deleteAlumno(id) {
   return await api.del(`/alumnos/${id}`);
 }
+
+/**
+ * Obtiene contadores globales de alumnos.
+ * @returns {Object} - { totalAlumnos, misAlumnos }
+ */
+export async function fetchContadoresAlumnos() {
+  return await api.get('/alumnos/stats');
+}
+

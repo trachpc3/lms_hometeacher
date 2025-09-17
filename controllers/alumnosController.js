@@ -3,13 +3,12 @@ import bcrypt from "bcryptjs";
 import pool from "../models/db.js";
 import { resolveCursoId } from "../utils/cursos.js";
 
-/** ✅ Crear alumno (acepta curso_id o curso string) */
+/** ✅ Crear alumno */
 export const addAlumno = async (req, res) => {
   try {
     const {
       nombre, apellidos, telefono, email, password,
-      profesor,            // id del profesor (usuarios.id)
-      curso_id, curso,     // acepta ambos; se resolverá a curso_id
+      profesor, curso_id, curso,
       estado_formacion, observaciones
     } = req.body;
 
@@ -17,7 +16,6 @@ export const addAlumno = async (req, res) => {
       return res.status(400).json({ message: "Todos los campos obligatorios deben completarse." });
     }
 
-    // Unicidad email explícita (además del UNIQUE)
     const [exists] = await pool.query("SELECT id FROM usuarios WHERE email = ? LIMIT 1", [email]);
     if (exists.length) {
       return res.status(409).json({ message: "El email ya está registrado." });
@@ -40,16 +38,12 @@ export const addAlumno = async (req, res) => {
   }
 };
 
-/** ✅ Obtener alumnos (JOIN cursos)
- *  Profesores: por defecto ven TODOS. Si ?mine=1|true, solo los suyos.
- *  Filtros opcionales: estado, estado_formacion, q (busca en nombre/apellidos/email)
- */
+/** ✅ Obtener alumnos con paginación y filtros */
 export const getAlumnos = async (req, res) => {
   try {
     const where = ["u.rol = 'estudiante'"];
     const params = [];
 
-    // Ámbito opcional "solo mis alumnos"
     const mine = String(req.query.mine || "").toLowerCase();
     const onlyMine = req.userRole === "profesor" && (mine === "1" || mine === "true");
     if (onlyMine) {
@@ -57,23 +51,41 @@ export const getAlumnos = async (req, res) => {
       params.push(req.userId);
     }
 
-    // Filtros sencillos
     if (req.query.estado) {
       where.push("u.estado = ?");
       params.push(req.query.estado);
     }
+
     if (req.query.estado_formacion) {
       where.push("u.estado_formacion = ?");
       params.push(req.query.estado_formacion);
     }
+
     if (req.query.q) {
       const q = `%${req.query.q}%`;
       where.push("(u.nombre LIKE ? OR u.apellidos LIKE ? OR u.email LIKE ?)");
       params.push(q, q, q);
     }
 
-    const sql = `
-      SELECT
+    // Paginación
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    // Total filtrado
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM usuarios u
+       LEFT JOIN cursos c ON c.id = u.curso_id
+       ${whereSQL}`,
+      params
+    );
+
+    // Alumnos paginados
+    const [rows] = await pool.query(
+      `SELECT
         u.id,
         u.nombre,
         u.apellidos,
@@ -86,26 +98,28 @@ export const getAlumnos = async (req, res) => {
         u.profesor_asignado,
         u.curso_id,
         c.nombre AS curso_nombre,
-        u.curso_matriculado,       -- legacy (por compatibilidad UI)
+        u.curso_matriculado,
         u.fecha_registro,
         u.fecha_baja,
         u.ultima_sesion
       FROM usuarios u
       LEFT JOIN cursos c ON c.id = u.curso_id
-      WHERE ${where.join(" AND ")}
+      ${whereSQL}
       ORDER BY u.nombre ASC, u.id DESC
-      LIMIT 500
-    `;
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
 
-    const [rows] = await pool.query(sql, params);
-    return res.json(rows);
+    const pages = Math.ceil(total / limit);
+
+    return res.json({ alumnos: rows, total, page, pages });
   } catch (error) {
     console.error("💥 Error al obtener alumnos:", error);
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
 
-/** ✅ Actualizar alumno (PATCH-like) — resuelve curso si llega curso/curso_id */
+/** ✅ Actualizar alumno */
 export const updateAlumno = async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,7 +128,6 @@ export const updateAlumno = async (req, res) => {
       return res.status(400).json({ message: "No se recibieron datos para actualizar." });
     }
 
-    // Ámbito opcional: solo modificar si pertenece al profesor autenticado
     if (req.userRole === "profesor") {
       const [[own]] = await pool.query(
         "SELECT id FROM usuarios WHERE id=? AND profesor_asignado=? AND rol='estudiante' LIMIT 1",
@@ -123,7 +136,6 @@ export const updateAlumno = async (req, res) => {
       if (!own) return res.status(403).json({ message: "No puedes modificar alumnos de otro profesor." });
     }
 
-    // Resolver curso si llega curso/curso_id
     const payload = { ...req.body };
     if (payload.curso || payload.curso_id) {
       const resolved = await resolveCursoId(pool, { curso_id: payload.curso_id, curso_nombre: payload.curso });
@@ -131,7 +143,6 @@ export const updateAlumno = async (req, res) => {
       delete payload.curso;
     }
 
-    // Campos permitidos
     const allowed = new Set([
       "nombre", "apellidos", "telefono", "email", "password",
       "profesor_asignado", "curso_id", "estado_formacion", "observaciones", "estado"
@@ -140,7 +151,6 @@ export const updateAlumno = async (req, res) => {
     const fields = [];
     const params = [];
 
-    // Evitar duplicado de email si lo cambian
     if (payload.email) {
       const [dup] = await pool.query("SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1", [payload.email, id]);
       if (dup.length) return res.status(409).json({ message: "El email ya está en uso." });
@@ -175,7 +185,7 @@ export const updateAlumno = async (req, res) => {
   }
 };
 
-/** ✅ Soft delete (estado='inactivo', fecha_baja=NOW()) */
+/** ✅ Soft delete */
 export const deleteAlumno = async (req, res) => {
   try {
     const { id } = req.params;

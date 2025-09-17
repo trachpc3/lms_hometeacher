@@ -36,6 +36,8 @@ const Alumnos = () => {
   const [totalAlumnos, setTotalAlumnos] = useState(0);
   const [misAlumnos, setMisAlumnos] = useState(0);
 
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     cargarAlumnos();
     cargarContadores();
@@ -43,20 +45,27 @@ const Alumnos = () => {
   }, [soloMisAlumnos, filtroTexto, filtroCampo, page]);
 
   const cargarAlumnos = async () => {
-    const params = {
-      mine: soloMisAlumnos ? 1 : undefined,
-      page,
-      limit: 10,
-    };
+    setLoading(true);
+    try {
+      const params = {
+        mine: soloMisAlumnos ? 1 : undefined,
+        page,
+        limit: 10,
+      };
 
-    if (filtroTexto) {
-      params.q = filtroTexto;
+      if (filtroTexto) {
+        params.q = filtroTexto;
+      }
+
+      const res = await fetchAlumnos(params);
+      setAlumnos(res.alumnos);
+      setTotal(res.total);
+      setPages(res.pages);
+    } catch (error) {
+      console.error("Error al cargar alumnos:", error);
+    } finally {
+      setLoading(false);
     }
-
-    const res = await fetchAlumnos(params);
-    setAlumnos(res.alumnos);
-    setTotal(res.total);
-    setPages(res.pages);
   };
 
   const cargarContadores = async () => {
@@ -117,7 +126,7 @@ const Alumnos = () => {
                   : "bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
-              Todos
+              Todos ({totalAlumnos})
             </button>
             <button
               type="button"
@@ -131,7 +140,7 @@ const Alumnos = () => {
                   : "bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
-              Solo mis alumnos
+              Solo mis alumnos ({misAlumnos})
             </button>
           </div>
 
@@ -173,12 +182,6 @@ const Alumnos = () => {
         </div>
       </div>
 
-      {/* 📊 Contadores */}
-      <div className="mb-2 text-sm text-gray-700">
-        Total alumnos: <strong>{totalAlumnos}</strong> — Mis alumnos:{" "}
-        <strong>{misAlumnos}</strong>
-      </div>
-
       {/* 📊 Info paginación */}
       <div className="mb-4 text-sm text-gray-600">
         Página {page} de {pages} — Resultados actuales: {alumnos.length}
@@ -199,7 +202,38 @@ const Alumnos = () => {
           </tr>
         </thead>
         <tbody>
-          {alumnos.length === 0 ? (
+          {loading ? (
+            // 💀 Skeleton loading
+            Array.from({ length: 5 }).map((_, index) => (
+              <tr key={index} className="animate-pulse border-b">
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-24" />
+                </td>
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-32" />
+                </td>
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-20" />
+                </td>
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-24" />
+                </td>
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-24" />
+                </td>
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-16" />
+                </td>
+                <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-24" />
+                </td>
+                <td className="p-3 flex justify-center gap-3">
+                  <div className="h-4 w-4 bg-gray-200 rounded-full" />
+                  <div className="h-4 w-4 bg-gray-200 rounded-full" />
+                </td>
+              </tr>
+            ))
+          ) : alumnos.length === 0 ? (
             <tr>
               <td colSpan="8" className="text-center p-3 text-gray-500">
                 No hay alumnos encontrados
@@ -241,7 +275,7 @@ const Alumnos = () => {
       </table>
 
       {/* 🔄 Paginación */}
-      {pages > 1 && (
+      {pages > 1 && !loading && (
         <div className="mt-6 flex justify-center gap-4 items-center text-sm">
           <button
             onClick={handleAnterior}

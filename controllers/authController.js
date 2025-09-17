@@ -1,34 +1,52 @@
+// controllers/authController.js
 import bcrypt from "bcryptjs";
-import pool from "../models/db.js";
 import crypto from "crypto";
+import pool from "../models/db.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 
 // ⚙️ Base para la cookie httpOnly del refresh
 const cookieBase = {
   httpOnly: true,
   sameSite: "lax",
-  secure: process.env.COOKIE_SECURE === "true", // en HTTPS true
+  secure: process.env.COOKIE_SECURE === "true", // en HTTPS => true
   path: "/api/auth/refresh", // solo viaja al endpoint de refresh
 };
 
 // === LOGIN TRADICIONAL ===
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   console.log("🟡 Intentando login con:", { email });
 
   try {
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [email]);
-    if (rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email y contraseña son obligatorios" });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (rows.length === 0) return res.status(401).json({ message: "Credenciales inválidas" });
 
     const user = rows[0];
+
+    // no permitir acceso si no está activo
+    if (user.estado !== "activo") {
+      return res.status(403).json({ message: `Usuario ${user.estado}. Contacta con soporte.` });
+    }
+
     const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) return res.status(401).json({ message: "Contraseña incorrecta" });
+    if (!isValidPassword) return res.status(401).json({ message: "Credenciales inválidas" });
 
     await registrarLogin(user.id, req);
 
-    const accessToken = signAccessToken(user);
+    const accessToken = signAccessToken(user);  // tu helper actual
     const refreshToken = signRefreshToken(user);
-    res.cookie("refreshToken", refreshToken, { ...cookieBase, maxAge: msToNumber(process.env.JWT_REFRESH_EXPIRES || "7d") });
+
+    res.cookie("refreshToken", refreshToken, {
+      ...cookieBase,
+      maxAge: msToNumber(process.env.JWT_REFRESH_EXPIRES || "7d"),
+    });
 
     return res.json({ token: accessToken, user: formatearUsuario(user) });
   } catch (error) {
@@ -39,7 +57,7 @@ export const login = async (req, res) => {
 
 // === LOGIN CON GOOGLE ===
 export const loginGoogle = async (req, res) => {
-  const { access_token } = req.body;
+  const { access_token } = req.body || {};
   if (!access_token) return res.status(400).json({ message: "Token de Google no proporcionado" });
 
   try {
@@ -60,14 +78,14 @@ export const loginGoogle = async (req, res) => {
 
     return res.json({ token: accessToken, user: formatearUsuario(user) });
   } catch (error) {
-    console.error("💥 Error en loginGoogle:", error.message);
+    console.error("💥 Error en loginGoogle:", error.message || error);
     return res.status(500).json({ message: "Error al autenticar con Google" });
   }
 };
 
 // === LOGIN CON FACEBOOK (Meta) ===
 export const loginMeta = async (req, res) => {
-  const { access_token } = req.body;
+  const { access_token } = req.body || {};
   if (!access_token) return res.status(400).json({ message: "Token de Meta no proporcionado" });
 
   try {
@@ -88,7 +106,7 @@ export const loginMeta = async (req, res) => {
 
     return res.json({ token: accessToken, user: formatearUsuario(user) });
   } catch (error) {
-    console.error("💥 Error en loginMeta:", error.message);
+    console.error("💥 Error en loginMeta:", error.message || error);
     return res.status(500).json({ message: "Error al autenticar con Facebook" });
   }
 };
@@ -101,47 +119,55 @@ export const refresh = async (req, res) => {
 
     const payload = verifyRefreshToken(rt);
 
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE id = ?", [payload.sub]);
+    const [rows] = await pool.query(
+      "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE id = ? LIMIT 1",
+      [payload.sub]
+    );
     const user = rows[0];
-    if (!user) return res.status(401).json({ message: "Usuario no válido" });
+    if (!user || user.estado !== "activo") {
+      return res.status(401).json({ message: "Usuario no válido" });
+    }
 
     const newAccess = signAccessToken(user);
     return res.json({ token: newAccess });
-  } catch (err) {
+  } catch (_err) {
     return res.status(401).json({ message: "Refresh inválido o expirado" });
   }
 };
 
 // 🚪 LOGOUT
-export const logout = async (req, res) => {
+export const logout = async (_req, res) => {
   try {
     res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
     return res.status(204).end();
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al cerrar sesión" });
   }
 };
 
 // === OLVIDÉ MI CONTRASEÑA ===
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
   if (!email) return res.status(400).json({ message: "Email requerido" });
 
   try {
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+    const [rows] = await pool.query(
+      "SELECT id, email FROM usuarios WHERE email = ? LIMIT 1",
+      [email]
+    );
     const user = rows[0];
     if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
 
     const token = crypto.randomBytes(32).toString("hex");
     const expires = Date.now() + 15 * 60 * 1000;
 
-    await pool.query("UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?", [
-      token,
-      expires,
-      user.id,
-    ]);
+    await pool.query(
+      "UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?",
+      [token, expires, user.id]
+    );
 
-    const resetUrl = `http://localhost:5173/restablecer-contraseña?token=${token}`;
+    // TODO: envía email real
+    const resetUrl = `${process.env.PUBLIC_URL || "http://localhost:5173"}/restablecer-contraseña?token=${token}`;
     console.log("📧 Enlace de recuperación:", resetUrl);
 
     return res.json({ message: "Enlace de recuperación enviado (simulado)" });
@@ -153,17 +179,20 @@ export const forgotPassword = async (req, res) => {
 
 // === RESETEO DE CONTRASEÑA ===
 export const resetPassword = async (req, res) => {
-  const { token, nuevaPassword } = req.body;
+  const { token, nuevaPassword } = req.body || {};
   if (!token || !nuevaPassword) {
     return res.status(400).json({ message: "Token y nueva contraseña requeridos" });
   }
 
   try {
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE reset_token = ?", [token]);
+    const [rows] = await pool.query(
+      "SELECT id, reset_token_expira FROM usuarios WHERE reset_token = ? LIMIT 1",
+      [token]
+    );
     const user = rows[0];
     if (!user) return res.status(400).json({ message: "Token inválido o inexistente" });
 
-    if (Date.now() > user.reset_token_expira) {
+    if (Date.now() > Number(user.reset_token_expira)) {
       return res.status(400).json({ message: "El token ha expirado" });
     }
 
@@ -182,7 +211,7 @@ export const resetPassword = async (req, res) => {
 
 // === REGISTRO MANUAL DE USUARIO DEMO ===
 export const register = async (req, res) => {
-  const { nombre, apellidos, email, telefono, curso_matriculado } = req.body;
+  const { nombre, apellidos, email, telefono, curso_matriculado } = req.body || {};
 
   if (!nombre || !apellidos || !email || !telefono || !curso_matriculado) {
     return res.status(400).json({ message: "Todos los campos son obligatorios" });
@@ -194,7 +223,7 @@ export const register = async (req, res) => {
   }
 
   try {
-    const [existe] = await pool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
+    const [existe] = await pool.query("SELECT id FROM usuarios WHERE email = ? LIMIT 1", [email]);
     if (existe.length > 0) {
       return res.status(409).json({ message: "El correo ya está registrado" });
     }
@@ -202,8 +231,8 @@ export const register = async (req, res) => {
     const passwordFija = await bcrypt.hash("Hometeacher", 10);
     const [result] = await pool.query(
       `INSERT INTO usuarios 
-       (nombre, apellidos, email, password, telefono, curso_matriculado, estado_formacion, profesor_asignado, metodo_registro, rol) 
-       VALUES (?, ?, ?, ?, ?, ?, 'demo', 0, 'manual', 'estudiante')`,
+       (nombre, apellidos, email, password, telefono, curso_matriculado, estado_formacion, profesor_asignado, metodo_registro, rol, estado) 
+       VALUES (?, ?, ?, ?, ?, ?, 'demo', 0, 'manual', 'estudiante', 'activo')`,
       [nombre, apellidos, email, passwordFija, telefono, curso_matriculado]
     );
 
@@ -217,33 +246,43 @@ export const register = async (req, res) => {
 
 // === HELPERS ===
 const buscarOCrearUsuario = async ({ email, nombre, imagen }) => {
-  const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+  const [rows] = await pool.query(
+    "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE email = ? LIMIT 1",
+    [email]
+  );
   if (rows.length > 0) return rows[0];
 
   const [result] = await pool.query(
-    "INSERT INTO usuarios (nombre, email, imagen, rol) VALUES (?, ?, ?, 'alumno')",
+    "INSERT INTO usuarios (nombre, email, imagen, rol, estado, metodo_registro) VALUES (?, ?, ?, 'estudiante', 'activo', 'google')",
     [nombre, email, imagen || "/mine.png"]
   );
 
   return {
     id: result.insertId,
     nombre,
+    apellidos: null,
     email,
     imagen: imagen || "/mine.png",
-    rol: "alumno",
+    rol: "estudiante",
+    estado: "activo",
+    estado_formacion: "demo",
+    fecha_registro: new Date(),
   };
 };
 
 const registrarLogin = async (usuarioId, req) => {
-  const ip = req.ip || "Desconocido";
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "Desconocido";
   const userAgent = req.headers["user-agent"] || "Desconocido";
-  const dispositivo = userAgent.slice(0, 191); // truncado para evitar error de longitud
+  const dispositivo = String(userAgent).slice(0, 191); // truncado
 
+  // si no tienes tabla `logins`, comenta esta línea
   await pool.query("INSERT INTO logins (usuario_id, ip, dispositivo) VALUES (?, ?, ?)", [
     usuarioId,
     ip,
     dispositivo,
   ]);
+
+  await pool.query("UPDATE usuarios SET ultima_sesion = NOW() WHERE id = ?", [usuarioId]);
 };
 
 // 🧰 Duración estilo "7d" → ms
@@ -264,16 +303,19 @@ function formatearUsuario(user) {
   } else if (String(user.imagen).startsWith("http")) {
     imagenFinal = user.imagen;
   } else {
-    imagenFinal = user.imagen.startsWith("/uploads") || user.imagen.startsWith("http")
-  ? user.imagen
-  : `/uploads/${user.imagen}`;
-
+    imagenFinal =
+      user.imagen.startsWith("/uploads") || user.imagen.startsWith("http")
+        ? user.imagen
+        : `/uploads/${user.imagen}`;
   }
+
   return {
     id: user.id,
     nombre: user.nombre,
+    apellidos: user.apellidos ?? null,
     email: user.email,
     rol: user.rol,
+    estado: user.estado,
     estado_formacion: user.estado_formacion,
     fecha_registro: user.fecha_registro,
     imagen: imagenFinal,

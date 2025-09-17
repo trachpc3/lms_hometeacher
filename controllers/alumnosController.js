@@ -212,3 +212,36 @@ export const deleteAlumno = async (req, res) => {
     res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+/** 📊 Contadores globales de alumnos */
+export const getAlumnosStats = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const userRole = req.userRole;
+
+    // Total alumnos activos
+    const [[{ totalAlumnos }]] = await pool.query(`
+      SELECT COUNT(*) AS totalAlumnos 
+      FROM usuarios 
+      WHERE rol = 'estudiante' AND estado = 'activo'
+    `);
+
+    // Mis alumnos (solo si es profesor)
+    let misAlumnos = 0;
+    if (userRole === "profesor") {
+      const [[{ total }]] = await pool.query(`
+        SELECT COUNT(*) AS total 
+        FROM usuarios 
+        WHERE rol = 'estudiante' AND estado = 'activo' AND profesor_asignado = ?
+      `, [userId]);
+      misAlumnos = total;
+    }
+
+    res.json({
+      totalAlumnos,
+      misAlumnos,
+    });
+  } catch (error) {
+    console.error("❌ Error en getAlumnosStats:", error);
+    res.status(500).json({ message: "Error obteniendo estadísticas de alumnos" });
+  }
+};

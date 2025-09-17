@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import pool from "../models/db.js";
-import { resolveCursoId } from "../lms-frontend/utils/cursos.js";
+import { resolveCursoId } from "../utils/cursos.js";
 
 /** ✅ Crear alumno (acepta curso_id o curso string) */
 export const addAlumno = async (req, res) => {

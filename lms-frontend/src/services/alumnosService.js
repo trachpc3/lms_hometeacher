@@ -1,31 +1,35 @@
+// services/alumnosService.js
 import { api } from '../lib/api';
 
 /**
  * Obtiene alumnos con filtros opcionales.
- * @param {Object} params - e.g. { q, page, estado }
+ * @param {Object} params - e.g. { q, page, estado, mine }
  */
 export async function fetchAlumnos(params = {}) {
   const qs = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    Object.entries(params).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    )
   ).toString();
 
-  const data = await api.get(`/alumnos${qs ? `?${qs}` : ''}`);
-  // Soporta backend que devuelve { success, alumnos: [...] } o directamente [...]
-  return Array.isArray(data?.alumnos) ? data.alumnos : Array.isArray(data) ? data : [];
+  const res = await api.get(`/alumnos${qs ? `?${qs}` : ''}`);
+
+  // Backend puede devolver directamente un array o un objeto con { alumnos: [...] }
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.alumnos)) return res.alumnos;
+
+  return [];
 }
 
 export async function addAlumno(alumno) {
-  // alumno: { nombre, email, telefono, ... }
-  const data = await api.post('/alumnos', alumno);
-  return data;
+  // alumno: { nombre, apellidos, email, telefono, ... }
+  return await api.post('/alumnos', alumno);
 }
 
 export async function updateAlumno(id, alumno) {
-  const data = await api.put(`/alumnos/${id}`, alumno);
-  return data;
+  return await api.put(`/alumnos/${id}`, alumno);
 }
 
 export async function deleteAlumno(id) {
-  const data = await api.del(`/alumnos/${id}`);
-  return data; // si prefieres booleano: return true;
+  return await api.del(`/alumnos/${id}`);
 }

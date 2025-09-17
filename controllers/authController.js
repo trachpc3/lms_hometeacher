@@ -1,226 +1,323 @@
-import { useState, useEffect, useMemo } from "react";
-import { Pencil, Trash, PlusCircle, Search } from "lucide-react";
-import { fetchAlumnos, addAlumno, updateAlumno, deleteAlumno } from "../services/alumnosService";
-import AlumnoModal from "../components/AlumnoModal";
+// controllers/authController.js
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import pool from "../models/db.js";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 
-const formatDate = (value) => {
-  if (!value) return "N/A";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return "N/A";
-  return d
-    .toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
-    .replace(/\//g, ".");
+// ⚙️ Base para la cookie httpOnly del refresh
+const cookieBase = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.COOKIE_SECURE === "true", // en HTTPS => true
+  path: "/api/auth/refresh", // solo viaja al endpoint de refresh
 };
 
-const Alumnos = () => {
-  const [alumnos, setAlumnos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState(null);
+// === LOGIN TRADICIONAL ===
+export const login = async (req, res) => {
+  const { email, password } = req.body || {};
+  console.log("🟡 Intentando login con:", { email });
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editData, setEditData] = useState(null);
-
-  const [filtroCampo, setFiltroCampo] = useState("nombre");
-  const [filtroTexto, setFiltroTexto] = useState("");
-
-  useEffect(() => {
-    cargarAlumnos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const cargarAlumnos = async () => {
-    setLoading(true);
-    setErr(null);
-    try {
-      const resp = await fetchAlumnos();
-      // el backend puede devolver array directo o { data: [...] }
-      const list = Array.isArray(resp) ? resp : resp?.data || [];
-      setAlumnos(list);
-    } catch (e) {
-      console.error("Error cargando alumnos:", e);
-      setErr("No se pudo cargar la lista de alumnos.");
-      setAlumnos([]);
-    } finally {
-      setLoading(false);
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email y contraseña son obligatorios" });
     }
-  };
 
-  const handleSave = async (alumno) => {
-    try {
-      if (editData) {
-        await updateAlumno(editData.id, alumno);
-      } else {
-        await addAlumno(alumno);
-      }
-      setModalOpen(false);
-      setEditData(null);
-      await cargarAlumnos();
-    } catch (e) {
-      console.error("Error guardando alumno:", e);
-      alert("No se pudo guardar el alumno.");
+    const [rows] = await pool.query(
+      "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (rows.length === 0) return res.status(401).json({ message: "Credenciales inválidas" });
+
+    const user = rows[0];
+
+    // no permitir acceso si no está activo
+    if (user.estado !== "activo") {
+      return res.status(403).json({ message: `Usuario ${user.estado}. Contacta con soporte.` });
     }
-  };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar (desactivar) este alumno?")) return;
-    try {
-      await deleteAlumno(id);
-      await cargarAlumnos();
-    } catch (e) {
-      console.error("Error eliminando alumno:", e);
-      alert("No se pudo eliminar el alumno.");
-    }
-  };
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) return res.status(401).json({ message: "Credenciales inválidas" });
 
-  // Campo de curso tolerante: curso_nombre (JOIN) o curso_matriculado (texto legacy)
-  const getCurso = (a) => a?.curso_nombre || a?.curso_matriculado || "N/A";
+    await registrarLogin(user.id, req);
 
-  // Campo estado mostrado: puedes elegir entre estado (activo/inactivo) o estado_formacion (demo/matriculado...)
-  const getEstado = (a) => a?.estado_formacion || a?.estado || "N/A";
+    const accessToken = signAccessToken(user);  // tu helper actual
+    const refreshToken = signRefreshToken(user);
 
-  const alumnosFiltrados = useMemo(() => {
-    const term = (filtroTexto || "").toLowerCase().trim();
-    if (!term) return alumnos;
-
-    return alumnos.filter((a) => {
-      let val = "";
-      switch (filtroCampo) {
-        case "nombre":
-          val = `${a?.nombre || ""} ${a?.apellidos || ""}`;
-          break;
-        case "email":
-          val = a?.email || "";
-          break;
-        case "telefono":
-          val = a?.telefono || "";
-          break;
-        case "curso":
-          val = getCurso(a);
-          break;
-        default:
-          val = String(a?.[filtroCampo] ?? "");
-      }
-      return val.toLowerCase().includes(term);
+    res.cookie("refreshToken", refreshToken, {
+      ...cookieBase,
+      maxAge: msToNumber(process.env.JWT_REFRESH_EXPIRES || "7d"),
     });
-  }, [alumnos, filtroCampo, filtroTexto]);
 
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-700">Mis Alumnos</h1>
-        <button
-          onClick={() => {
-            setEditData(null);
-            setModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow"
-        >
-          <PlusCircle size={18} /> Agregar Alumno
-        </button>
-      </div>
-
-      <div className="flex gap-2 mb-4">
-        <select
-          value={filtroCampo}
-          onChange={(e) => setFiltroCampo(e.target.value)}
-          className="border p-2 rounded-lg"
-        >
-          <option value="nombre">Nombre</option>
-          <option value="email">Email</option>
-          <option value="telefono">Teléfono</option>
-          <option value="curso">Curso</option>
-        </select>
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            value={filtroTexto}
-            onChange={(e) => setFiltroTexto(e.target.value)}
-            className="w-full pl-10 p-2 border rounded-lg"
-          />
-        </div>
-      </div>
-
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-100 text-gray-700">
-              <th className="p-3 text-left">Nombre</th>
-              <th className="p-3 text-left">Email</th>
-              <th className="p-3 text-left">Teléfono</th>
-              <th className="p-3 text-left">Fecha Registro</th>
-              <th className="p-3 text-left">Fecha Baja</th>
-              <th className="p-3 text-left">Estado</th>
-              <th className="p-3 text-left">Curso</th>
-              <th className="p-3 text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="8" className="text-center p-6 text-gray-500">
-                  Cargando...
-                </td>
-              </tr>
-            ) : err ? (
-              <tr>
-                <td colSpan="8" className="text-center p-6 text-red-600">
-                  {err}
-                </td>
-              </tr>
-            ) : alumnosFiltrados.length === 0 ? (
-              <tr>
-                <td colSpan="8" className="text-center p-6 text-gray-500">
-                  No hay alumnos encontrados
-                </td>
-              </tr>
-            ) : (
-              alumnosFiltrados.map((alumno) => (
-                <tr key={alumno.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3">
-                    {alumno.nombre} {alumno.apellidos ? ` ${alumno.apellidos}` : ""}
-                  </td>
-                  <td className="p-3">{alumno.email}</td>
-                  <td className="p-3">{alumno.telefono || "N/A"}</td>
-                  <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
-                  {/* si backend no envía fecha_baja en el SELECT, quedará N/A */}
-                  <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
-                  <td className="p-3">{getEstado(alumno)}</td>
-                  <td className="p-3">{getCurso(alumno)}</td>
-                  <td className="p-3">
-                    <div className="flex justify-center gap-3">
-                      <button
-                        onClick={() => {
-                          setEditData(alumno);
-                          setModalOpen(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Editar"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(alumno.id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Eliminar"
-                      >
-                        <Trash size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {modalOpen && (
-        <AlumnoModal onClose={() => setModalOpen(false)} onSave={handleSave} editData={editData} />
-      )}
-    </div>
-  );
+    return res.json({ token: accessToken, user: formatearUsuario(user) });
+  } catch (error) {
+    console.error("💥 Error en login:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
 };
 
-export default Alumnos;
+// === LOGIN CON GOOGLE ===
+export const loginGoogle = async (req, res) => {
+  const { access_token } = req.body || {};
+  if (!access_token) return res.status(400).json({ message: "Token de Google no proporcionado" });
+
+  try {
+    const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    if (!response.ok) throw new Error("Token inválido o expirado (Google)");
+
+    const { email, name, picture } = await response.json();
+    if (!email || !name) throw new Error("Faltan datos del usuario de Google");
+
+    const user = await buscarOCrearUsuario({ email, nombre: name, imagen: picture });
+    await registrarLogin(user.id, req);
+
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+    res.cookie("refreshToken", refreshToken, { ...cookieBase, maxAge: msToNumber(process.env.JWT_REFRESH_EXPIRES || "7d") });
+
+    return res.json({ token: accessToken, user: formatearUsuario(user) });
+  } catch (error) {
+    console.error("💥 Error en loginGoogle:", error.message || error);
+    return res.status(500).json({ message: "Error al autenticar con Google" });
+  }
+};
+
+// === LOGIN CON FACEBOOK (Meta) ===
+export const loginMeta = async (req, res) => {
+  const { access_token } = req.body || {};
+  if (!access_token) return res.status(400).json({ message: "Token de Meta no proporcionado" });
+
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${access_token}`
+    );
+    if (!response.ok) throw new Error("Token inválido o expirado (Meta)");
+
+    const { email, name, picture } = await response.json();
+    if (!email || !name) throw new Error("Faltan datos del usuario de Facebook");
+
+    const user = await buscarOCrearUsuario({ email, nombre: name, imagen: picture?.data?.url });
+    await registrarLogin(user.id, req);
+
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+    res.cookie("refreshToken", refreshToken, { ...cookieBase, maxAge: msToNumber(process.env.JWT_REFRESH_EXPIRES || "7d") });
+
+    return res.json({ token: accessToken, user: formatearUsuario(user) });
+  } catch (error) {
+    console.error("💥 Error en loginMeta:", error.message || error);
+    return res.status(500).json({ message: "Error al autenticar con Facebook" });
+  }
+};
+
+// 🔁 REFRESH
+export const refresh = async (req, res) => {
+  try {
+    const rt = req.cookies?.refreshToken;
+    if (!rt) return res.status(401).json({ message: "No refresh token" });
+
+    const payload = verifyRefreshToken(rt);
+
+    const [rows] = await pool.query(
+      "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE id = ? LIMIT 1",
+      [payload.sub]
+    );
+    const user = rows[0];
+    if (!user || user.estado !== "activo") {
+      return res.status(401).json({ message: "Usuario no válido" });
+    }
+
+    const newAccess = signAccessToken(user);
+    return res.json({ token: newAccess });
+  } catch (_err) {
+    return res.status(401).json({ message: "Refresh inválido o expirado" });
+  }
+};
+
+// 🚪 LOGOUT
+export const logout = async (_req, res) => {
+  try {
+    res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+    return res.status(204).end();
+  } catch (_error) {
+    return res.status(500).json({ message: "Error al cerrar sesión" });
+  }
+};
+
+// === OLVIDÉ MI CONTRASEÑA ===
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ message: "Email requerido" });
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, email FROM usuarios WHERE email = ? LIMIT 1",
+      [email]
+    );
+    const user = rows[0];
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expires = Date.now() + 15 * 60 * 1000;
+
+    await pool.query(
+      "UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?",
+      [token, expires, user.id]
+    );
+
+    // TODO: envía email real
+    const resetUrl = `${process.env.PUBLIC_URL || "http://localhost:5173"}/restablecer-contraseña?token=${token}`;
+    console.log("📧 Enlace de recuperación:", resetUrl);
+
+    return res.json({ message: "Enlace de recuperación enviado (simulado)" });
+  } catch (error) {
+    console.error("💥 Error en forgotPassword:", error);
+    return res.status(500).json({ message: "Error al generar enlace de recuperación" });
+  }
+};
+
+// === RESETEO DE CONTRASEÑA ===
+export const resetPassword = async (req, res) => {
+  const { token, nuevaPassword } = req.body || {};
+  if (!token || !nuevaPassword) {
+    return res.status(400).json({ message: "Token y nueva contraseña requeridos" });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, reset_token_expira FROM usuarios WHERE reset_token = ? LIMIT 1",
+      [token]
+    );
+    const user = rows[0];
+    if (!user) return res.status(400).json({ message: "Token inválido o inexistente" });
+
+    if (Date.now() > Number(user.reset_token_expira)) {
+      return res.status(400).json({ message: "El token ha expirado" });
+    }
+
+    const hashed = await bcrypt.hash(nuevaPassword, 10);
+    await pool.query(
+      "UPDATE usuarios SET password = ?, reset_token = NULL, reset_token_expira = NULL WHERE id = ?",
+      [hashed, user.id]
+    );
+
+    return res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (error) {
+    console.error("💥 Error en resetPassword:", error);
+    return res.status(500).json({ message: "Error al actualizar la contraseña" });
+  }
+};
+
+// === REGISTRO MANUAL DE USUARIO DEMO ===
+export const register = async (req, res) => {
+  const { nombre, apellidos, email, telefono, curso_matriculado } = req.body || {};
+
+  if (!nombre || !apellidos || !email || !telefono || !curso_matriculado) {
+    return res.status(400).json({ message: "Todos los campos son obligatorios" });
+  }
+
+  const telefonoRegex = /^[0-9\s()+-]{7,20}$/;
+  if (!telefonoRegex.test(telefono)) {
+    return res.status(400).json({ message: "Número de teléfono no válido" });
+  }
+
+  try {
+    const [existe] = await pool.query("SELECT id FROM usuarios WHERE email = ? LIMIT 1", [email]);
+    if (existe.length > 0) {
+      return res.status(409).json({ message: "El correo ya está registrado" });
+    }
+
+    const passwordFija = await bcrypt.hash("Hometeacher", 10);
+    const [result] = await pool.query(
+      `INSERT INTO usuarios 
+       (nombre, apellidos, email, password, telefono, curso_matriculado, estado_formacion, profesor_asignado, metodo_registro, rol, estado) 
+       VALUES (?, ?, ?, ?, ?, ?, 'demo', 0, 'manual', 'estudiante', 'activo')`,
+      [nombre, apellidos, email, passwordFija, telefono, curso_matriculado]
+    );
+
+    console.log(`📨 Email simulado: Bienvenido ${nombre}, acceso demo creado.`);
+    return res.status(201).json({ message: "Usuario demo registrado correctamente", id: result.insertId });
+  } catch (error) {
+    console.error("💥 Error en register:", error);
+    return res.status(500).json({ message: "Error al registrar usuario demo" });
+  }
+};
+
+// === HELPERS ===
+const buscarOCrearUsuario = async ({ email, nombre, imagen }) => {
+  const [rows] = await pool.query(
+    "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE email = ? LIMIT 1",
+    [email]
+  );
+  if (rows.length > 0) return rows[0];
+
+  const [result] = await pool.query(
+    "INSERT INTO usuarios (nombre, email, imagen, rol, estado, metodo_registro) VALUES (?, ?, ?, 'estudiante', 'activo', 'google')",
+    [nombre, email, imagen || "/mine.png"]
+  );
+
+  return {
+    id: result.insertId,
+    nombre,
+    apellidos: null,
+    email,
+    imagen: imagen || "/mine.png",
+    rol: "estudiante",
+    estado: "activo",
+    estado_formacion: "demo",
+    fecha_registro: new Date(),
+  };
+};
+
+const registrarLogin = async (usuarioId, req) => {
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "Desconocido";
+  const userAgent = req.headers["user-agent"] || "Desconocido";
+  const dispositivo = String(userAgent).slice(0, 191); // truncado
+
+  // si no tienes tabla `logins`, comenta esta línea
+  await pool.query("INSERT INTO logins (usuario_id, ip, dispositivo) VALUES (?, ?, ?)", [
+    usuarioId,
+    ip,
+    dispositivo,
+  ]);
+
+  await pool.query("UPDATE usuarios SET ultima_sesion = NOW() WHERE id = ?", [usuarioId]);
+};
+
+// 🧰 Duración estilo "7d" → ms
+function msToNumber(str) {
+  if (typeof str === "number") return str;
+  const m = String(str).match(/^(\d+)(ms|s|m|h|d)$/i);
+  if (!m) return 7 * 24 * 60 * 60 * 1000;
+  const n = parseInt(m[1], 10);
+  const unit = m[2].toLowerCase();
+  const mul = { ms: 1, s: 1e3, m: 6e4, h: 36e5, d: 864e5 }[unit];
+  return n * mul;
+}
+
+function formatearUsuario(user) {
+  let imagenFinal;
+  if (!user.imagen || user.imagen === "/default-profile.png") {
+    imagenFinal = "/images/default-profile.jpg";
+  } else if (String(user.imagen).startsWith("http")) {
+    imagenFinal = user.imagen;
+  } else {
+    imagenFinal =
+      user.imagen.startsWith("/uploads") || user.imagen.startsWith("http")
+        ? user.imagen
+        : `/uploads/${user.imagen}`;
+  }
+
+  return {
+    id: user.id,
+    nombre: user.nombre,
+    apellidos: user.apellidos ?? null,
+    email: user.email,
+    rol: user.rol,
+    estado: user.estado,
+    estado_formacion: user.estado_formacion,
+    fecha_registro: user.fecha_registro,
+    imagen: imagenFinal,
+  };
+}

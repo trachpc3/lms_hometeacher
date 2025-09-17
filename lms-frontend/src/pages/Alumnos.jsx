@@ -8,6 +8,7 @@ import {
   fetchContadoresAlumnos,
 } from "../services/alumnosService";
 import AlumnoModal from "../components/AlumnoModal";
+import AccionMasivaModal from "../components/AccionMasivaModal";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -38,6 +39,10 @@ const Alumnos = () => {
 
   const [loading, setLoading] = useState(false);
 
+  // Para selección múltiple
+  const [seleccionados, setSeleccionados] = useState([]);
+  const [accionMasivaOpen, setAccionMasivaOpen] = useState(false);
+
   useEffect(() => {
     cargarAlumnos();
     cargarContadores();
@@ -61,6 +66,8 @@ const Alumnos = () => {
       setAlumnos(res.alumnos);
       setTotal(res.total);
       setPages(res.pages);
+      // Si cambias de página o filtro, limpiar selección
+      setSeleccionados([]);
     } catch (error) {
       console.error("Error al cargar alumnos:", error);
     } finally {
@@ -98,6 +105,34 @@ const Alumnos = () => {
     }
   };
 
+  const handleAccionMasiva = async (accion, valor) => {
+    // accion: "eliminar" | "estado" | "estado_formacion" | "curso"
+    // valor: depende de la acción (nuevo estado, curso.id, etc.)
+    try {
+      if (accion === "eliminar") {
+        // eliminar cada uno
+        await Promise.all(
+          seleccionados.map((id) => deleteAlumno(id))
+        );
+      } else {
+        // actualizar cada uno
+        await Promise.all(
+          seleccionados.map((id) =>
+            updateAlumno(id, { [accion]: valor })
+          )
+        );
+      }
+      // después de acción, recargar
+      cargarAlumnos();
+      cargarContadores();
+    } catch (error) {
+      console.error("Error aplicando acción masiva:", error);
+      alert("Hubo un error al aplicar la acción masiva.");
+    } finally {
+      setAccionMasivaOpen(false);
+    }
+  };
+
   const handleAnterior = () => {
     if (page > 1) setPage(page - 1);
   };
@@ -106,9 +141,33 @@ const Alumnos = () => {
     if (page < pages) setPage(page + 1);
   };
 
+  const toggleSeleccionado = (id) => {
+    setSeleccionados((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleSeleccionTodos = () => {
+    if (todosSeleccionadosEnPagina()) {
+      // desmarcar todos
+      setSeleccionados([]);
+    } else {
+      // marcar todos los visibles en la página actual
+      const ids = alumnos.map((a) => a.id);
+      setSeleccionados(ids);
+    }
+  };
+
+  const todosSeleccionadosEnPagina = () => {
+    if (alumnos.length === 0) return false;
+    return alumnos.every((a) => seleccionados.includes(a.id));
+  };
+
   return (
     <div className="p-6">
-      {/* 🔘 Botones toggle + Agregar */}
+      {/* 🔘 Botones toggle + Agregar + Acciones masivas */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-700">Alumnos</h1>
 
@@ -153,6 +212,15 @@ const Alumnos = () => {
           >
             <PlusCircle size={18} /> Agregar Alumno
           </button>
+
+          {seleccionados.length > 0 && (
+            <button
+              onClick={() => setAccionMasivaOpen(true)}
+              className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow"
+            >
+              Acciones en masa ({seleccionados.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -182,26 +250,36 @@ const Alumnos = () => {
         </div>
       </div>
 
-    
       {/* 📋 Tabla */}
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
         <thead>
           <tr className="bg-gray-200">
+            <th className="p-3 text-left">
+              <input
+                type="checkbox"
+                checked={todosSeleccionadosEnPagina()}
+                onChange={toggleSeleccionTodos}
+              />
+            </th>
             <th className="p-3 text-left">Nombre</th>
             <th className="p-3 text-left">Email</th>
             <th className="p-3 text-left">Teléfono</th>
             <th className="p-3 text-left">Fecha Registro</th>
             <th className="p-3 text-left">Fecha Baja</th>
             <th className="p-3 text-left">Estado</th>
+            <th className="p-3 text-left">Estado Formación</th>
             <th className="p-3 text-left">Curso</th>
             <th className="p-3 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            // 💀 Skeleton loading
+            // Skeleton loading
             Array.from({ length: 5 }).map((_, index) => (
               <tr key={index} className="animate-pulse border-b">
+                <td className="p-3">
+                  <div className="h-4 w-4 bg-gray-200 rounded" />
+                </td>
                 <td className="p-3">
                   <div className="h-4 bg-gray-200 rounded w-24" />
                 </td>
@@ -221,6 +299,9 @@ const Alumnos = () => {
                   <div className="h-4 bg-gray-200 rounded w-16" />
                 </td>
                 <td className="p-3">
+                  <div className="h-4 bg-gray-200 rounded w-20" />
+                </td>
+                <td className="p-3">
                   <div className="h-4 bg-gray-200 rounded w-24" />
                 </td>
                 <td className="p-3 flex justify-center gap-3">
@@ -231,19 +312,29 @@ const Alumnos = () => {
             ))
           ) : alumnos.length === 0 ? (
             <tr>
-              <td colSpan="8" className="text-center p-3 text-gray-500">
+              <td colSpan="10" className="text-center p-3 text-gray-500">
                 No hay alumnos encontrados
               </td>
             </tr>
           ) : (
             alumnos.map((alumno) => (
               <tr key={alumno.id} className="border-b hover:bg-gray-100">
+                <td className="p-3">
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.includes(alumno.id)}
+                    onChange={() => toggleSeleccionado(alumno.id)}
+                  />
+                </td>
                 <td className="p-3">{alumno.nombre}</td>
                 <td className="p-3">{alumno.email}</td>
                 <td className="p-3">{alumno.telefono || "N/A"}</td>
                 <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
                 <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
-                <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
+                <td className="p-3">{alumno.estado}</td>
+                <td className="p-3">
+                  {alumno.estado_formacion || "N/A"}
+                </td>
                 <td className="p-3">
                   {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
                 </td>
@@ -270,8 +361,8 @@ const Alumnos = () => {
         </tbody>
       </table>
 
-      {/* 🔄 Paginación */}
-      {pages > 1 && !loading && (
+      {/* Pie con paginación */}
+      {!loading && pages > 1 && (
         <div className="mt-6 flex justify-center gap-4 items-center text-sm">
           <button
             onClick={handleAnterior}
@@ -298,6 +389,15 @@ const Alumnos = () => {
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
           editData={editData}
+        />
+      )}
+
+      {accionMasivaOpen && (
+        <AccionMasivaModal
+          open={accionMasivaOpen}
+          onClose={() => setAccionMasivaOpen(false)}
+          onConfirm={handleAccionMasiva}
+          seleccionados={seleccionados}
         />
       )}
     </div>

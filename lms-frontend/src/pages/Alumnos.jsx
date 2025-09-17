@@ -182,11 +182,7 @@ const Alumnos = () => {
         </div>
       </div>
 
-      {/* 📊 Info paginación */}
-      <div className="mb-4 text-sm text-gray-600">
-        Página {page} de {pages} — Resultados actuales: {alumnos.length}
-      </div>
-
+    
       {/* 📋 Tabla */}
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
         <thead>

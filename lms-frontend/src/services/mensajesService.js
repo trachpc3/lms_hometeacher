@@ -1,5 +1,5 @@
 // src/services/mensajesService.js
-import { api } from "@/lib/api";
+import { api } from "../lib/api";
 
 const BASE = "/mensajes"; // 👈 OJO: api.js ya antepone API_BASE_URL (que incluye /api)
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Pencil, Trash, PlusCircle, Search } from "lucide-react";
+import { Pencil, Trash, PlusCircle, Search, Play, Pause } from "lucide-react";
 import {
   fetchAlumnos,
   addAlumno,
@@ -132,6 +132,20 @@ const Alumnos = () => {
       toast.error("❌ Hubo un error al aplicar la acción masiva");
     } finally {
       setAccionMasivaOpen(false);
+    }
+  };
+
+  const toggleEstado = async (alumno) => {
+    const next = alumno.estado === "activo" ? "pausado" : "activo";
+    try {
+      await updateAlumno(alumno.id, { estado: next });
+      setAlumnos((prev) =>
+        prev.map((a) => (a.id === alumno.id ? { ...a, estado: next } : a))
+      );
+      toast.success(`Estado cambiado a ${next} ▶⏸`);
+    } catch (error) {
+      console.error(error);
+      toast.error("❌ No se pudo cambiar el estado");
     }
   };
 
@@ -293,6 +307,27 @@ const Alumnos = () => {
                   {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
                 </td>
                 <td className="p-3 flex justify-center gap-3">
+                  <button
+                    onClick={() => toggleEstado(alumno)}
+                    disabled={alumno.estado === "inactivo"}
+                    title={
+                      alumno.estado === "inactivo"
+                        ? "Inactivo (no editable)"
+                        : alumno.estado === "pausado"
+                        ? "Activar alumno"
+                        : "Pausar alumno"
+                    }
+                    className={`${
+                      alumno.estado === "inactivo"
+                        ? "text-gray-300 cursor-not-allowed"
+                        : alumno.estado === "pausado"
+                        ? "text-green-600 hover:text-green-700"
+                        : "text-yellow-600 hover:text-yellow-700"
+                    }`}
+                  >
+                    {alumno.estado === "pausado" ? <Play size={18} /> : <Pause size={18} />}
+                  </button>
+
                   <button
                     onClick={() => {
                       setEditData(alumno);

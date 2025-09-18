@@ -1,11 +1,17 @@
 // src/components/Header.jsx
-import { HelpCircle, Phone, Menu, LogOut, CheckCircle, MessageCircle /* Bell */ } from "lucide-react";
+import { HelpCircle, Phone, Menu, LogOut, CheckCircle, MessageCircle, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import { useState } from "react";
 
-const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadMessages = 0 /* unreadNotifs */ }) => {
+const Header = ({
+  startTutorial,
+  handleLogout,
+  toggleSidebar,
+  unreadMessages = 0,
+  unreadNotifs = 0,
+}) => {
   const navigate = useNavigate();
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -63,12 +69,20 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadMessages = 0
           )}
         </button>
 
-        {/* (Opcional) Notificaciones aparte
-        <button className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors" aria-label="Notificaciones">
+        {/* Notificaciones (campana) */}
+        <button
+          onClick={() => navigate("/notificaciones")}
+          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Notificaciones del sistema"
+          title="Notificaciones"
+        >
           <Bell size={20} />
-          {unreadNotifs > 0 && <span className="...">{unreadNotifs}</span>}
+          {unreadNotifs > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-indigo-600 text-white text-[10px] leading-4 text-center font-semibold shadow">
+              {unreadNotifs > 99 ? "99+" : unreadNotifs}
+            </span>
+          )}
         </button>
-        */}
 
         {/* Perfil */}
         <div className="relative">

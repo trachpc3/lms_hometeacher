@@ -118,7 +118,7 @@ const Alumnos = () => {
         // actualizar cada uno
         await Promise.all(
           seleccionados.map((id) =>
-            updateAlumno(id, { [accion]: valor })
+        updateAlumno(id, { profesor_asignado: valor });
           )
         );
       }

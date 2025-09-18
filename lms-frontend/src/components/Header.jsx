@@ -1,18 +1,17 @@
 // src/components/Header.jsx
-import { HelpCircle, Phone, Menu, LogOut, CheckCircle } from "lucide-react";
+import { HelpCircle, Phone, Menu, LogOut, CheckCircle, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import { useState } from "react";
 
-const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
+const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadCount = 0 }) => {
   const navigate = useNavigate();
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // ✅ Genera la URL del avatar con cache-buster para que se actualice al cambiar
   const avatarSrc = getAvatarUrl(user?.imagen, user?._updatedAt);
-
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -30,6 +29,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
 
       {/* Acciones */}
       <div className="flex items-center gap-2 md:gap-4">
+        {/* Tutorial */}
         <button
           onClick={startTutorial}
           className="flex items-center gap-2 text-blue-600 font-semibold text-sm md:text-base"
@@ -38,6 +38,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
           Tutorial
         </button>
 
+        {/* ¿Te llamamos? */}
         <a
           href="https://calendly.com/hometeacher-empresas"
           target="_blank"
@@ -47,6 +48,24 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar }) => {
           <Phone size={18} />
           ¿Te llamamos?
         </a>
+
+        {/* Campanita/Mensajería */}
+        <button
+          onClick={() => navigate("/mensajes")}
+          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Abrir mensajes"
+          title="Mensajes"
+        >
+          <Bell size={20} />
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow"
+              aria-label={`${unreadCount} mensajes sin leer`}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
 
         {/* Perfil */}
         <div className="relative">

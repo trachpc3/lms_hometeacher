@@ -1,21 +1,19 @@
 // src/components/Header.jsx
-import { HelpCircle, Phone, Menu, LogOut, CheckCircle, Bell } from "lucide-react";
+import { HelpCircle, Phone, Menu, LogOut, CheckCircle, MessageCircle /* Bell */ } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import { useState } from "react";
 
-const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadCount = 0 }) => {
+const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadMessages = 0 /* unreadNotifs */ }) => {
   const navigate = useNavigate();
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  // ✅ Genera la URL del avatar con cache-buster para que se actualice al cambiar
   const avatarSrc = getAvatarUrl(user?.imagen, user?._updatedAt);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
-      {/* Botón hamburguesa para móvil */}
+      {/* Menú móvil */}
       <button
         onClick={toggleSidebar}
         className="md:hidden p-2 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300"
@@ -24,10 +22,10 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadCount = 0 })
         <Menu size={24} />
       </button>
 
-      {/* Espacio reservado para logo o título */}
+      {/* Logo / título (placeholder) */}
       <div className="flex items-center gap-2 md:gap-4" />
 
-      {/* Acciones */}
+      {/* Acciones derecha */}
       <div className="flex items-center gap-2 md:gap-4">
         {/* Tutorial */}
         <button
@@ -35,7 +33,7 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadCount = 0 })
           className="flex items-center gap-2 text-blue-600 font-semibold text-sm md:text-base"
         >
           <HelpCircle size={20} />
-          Tutorial
+          <span className="hidden sm:inline">Tutorial</span>
         </button>
 
         {/* ¿Te llamamos? */}
@@ -46,33 +44,35 @@ const Header = ({ startTutorial, handleLogout, toggleSidebar, unreadCount = 0 })
           className="bg-blue-600 text-white font-semibold px-3 py-1 rounded-md flex items-center gap-2 text-sm md:text-base hover:bg-blue-700 transition"
         >
           <Phone size={18} />
-          ¿Te llamamos?
+          <span className="hidden sm:inline">¿Te llamamos?</span>
         </a>
 
-        {/* Campanita/Mensajería */}
+        {/* Mensajes (chat con profesor) */}
         <button
           onClick={() => navigate("/mensajes")}
-          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Abrir mensajes"
-          title="Mensajes"
+          className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Mensajes (chatear con tu profesor)"
+          title="Mensajes (chatear con tu profesor)"
         >
-          <Bell size={20} />
-          {unreadCount > 0 && (
-            <span
-              className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow"
-              aria-label={`${unreadCount} mensajes sin leer`}
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
+          <MessageCircle size={20} />
+          <span className="hidden md:inline font-medium">Mensajes</span>
+          {unreadMessages > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow">
+              {unreadMessages > 99 ? "99+" : unreadMessages}
             </span>
           )}
         </button>
 
+        {/* (Opcional) Notificaciones aparte
+        <button className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors" aria-label="Notificaciones">
+          <Bell size={20} />
+          {unreadNotifs > 0 && <span className="...">{unreadNotifs}</span>}
+        </button>
+        */}
+
         {/* Perfil */}
         <div className="relative">
-          <button
-            onClick={() => setDropdownOpen((o) => !o)}
-            className="flex items-center gap-2"
-          >
+          <button onClick={() => setDropdownOpen(o => !o)} className="flex items-center gap-2">
             <span className="text-gray-700 font-semibold text-sm md:text-base">
               Hola {user?.nombre || "Usuario"}
             </span>

@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchProfesores } from "../services/profesoresService";
 
 const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
   const [accion, setAccion] = useState("");
   const [valor, setValor] = useState("");
+  const [opcionesProfesores, setOpcionesProfesores] = useState([]);
 
   if (!open) return null;
 
@@ -11,6 +13,7 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
     { value: "estado", label: "Cambiar estado" },
     { value: "estado_formacion", label: "Cambiar estado de formación" },
     { value: "curso", label: "Asignar curso" },
+    { value: "profesor", label: "Asignar profesor" },
   ];
 
   const opcionesEstado = [
@@ -24,13 +27,24 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
     { value: "baja", label: "Baja" },
   ];
 
-  // Supongo que tienes una lista de cursos fijos que puedes definir aquí:
   const opcionesCursos = [
     { value: 1, label: "Curso A (ID 1)" },
     { value: 2, label: "Curso B (ID 2)" },
     { value: 3, label: "Curso C (ID 3)" },
-    // añadir los que tengas
   ];
+
+  useEffect(() => {
+    if (accion === "profesor") {
+      fetchProfesores().then((res) => {
+        setOpcionesProfesores(
+          res.map((p) => ({
+            value: p.id,
+            label: `${p.nombre} ${p.apellidos}`,
+          }))
+        );
+      });
+    }
+  }, [accion]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,17 +52,15 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
       alert("Seleccione una acción");
       return;
     }
-    // si acción es eliminar, valor puede estar vacío
+
     if (
-      accion === "estado" ||
-      accion === "estado_formacion" ||
-      accion === "curso"
+      ["estado", "estado_formacion", "curso", "profesor"].includes(accion) &&
+      !valor
     ) {
-      if (!valor) {
-        alert("Seleccione un valor para la acción");
-        return;
-      }
+      alert("Seleccione un valor para la acción");
+      return;
     }
+
     onConfirm(accion, valor);
   };
 
@@ -56,15 +68,18 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white rounded-lg p-6 w-11/12 max-w-md">
         <h2 className="text-xl font-bold mb-4">Acción masiva</h2>
-        <p className="mb-2">Seleccionados: {seleccionados.length}</p>
+        <p className="mb-2 text-sm text-gray-600">
+          Alumnos seleccionados: <strong>{seleccionados.length}</strong>
+        </p>
         <form onSubmit={handleSubmit}>
+          {/* Acción */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Acción</label>
             <select
               value={accion}
               onChange={(e) => {
                 setAccion(e.target.value);
-                setValor(""); // resetear valor al cambiar acción
+                setValor("");
               }}
               className="w-full border p-2 rounded-lg"
             >
@@ -77,6 +92,7 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
             </select>
           </div>
 
+          {/* Estado */}
           {accion === "estado" && (
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">
@@ -97,6 +113,7 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
             </div>
           )}
 
+          {/* Estado formación */}
           {accion === "estado_formacion" && (
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">
@@ -117,6 +134,7 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
             </div>
           )}
 
+          {/* Curso */}
           {accion === "curso" && (
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">Curso</label>
@@ -135,7 +153,29 @@ const AccionMasivaModal = ({ open, onClose, onConfirm, seleccionados }) => {
             </div>
           )}
 
-          <div className="flex justify-end gap-3">
+          {/* Profesor */}
+          {accion === "profesor" && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">
+                Profesor asignado
+              </label>
+              <select
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                className="w-full border p-2 rounded-lg"
+              >
+                <option value="">-- Seleccionar profesor --</option>
+                {opcionesProfesores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Botones */}
+          <div className="flex justify-end gap-3 mt-6">
             <button
               type="button"
               onClick={onClose}

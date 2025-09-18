@@ -105,33 +105,33 @@ const Alumnos = () => {
     }
   };
 
-  const handleAccionMasiva = async (accion, valor) => {
-    // accion: "eliminar" | "estado" | "estado_formacion" | "curso"
-    // valor: depende de la acción (nuevo estado, curso.id, etc.)
-    try {
-      if (accion === "eliminar") {
-        // eliminar cada uno
-        await Promise.all(
-          seleccionados.map((id) => deleteAlumno(id))
-        );
-      } else {
-        // actualizar cada uno
-        await Promise.all(
-          seleccionados.map((id) =>
-        updateAlumno(id, { profesor_asignado: valor });
-          )
-        );
-      }
-      // después de acción, recargar
-      cargarAlumnos();
-      cargarContadores();
-    } catch (error) {
-      console.error("Error aplicando acción masiva:", error);
-      alert("Hubo un error al aplicar la acción masiva.");
-    } finally {
-      setAccionMasivaOpen(false);
+ const handleAccionMasiva = async (accion, valor) => {
+  try {
+    if (accion === "eliminar") {
+      await Promise.all(seleccionados.map((id) => deleteAlumno(id)));
+    } else if (accion === "profesor") {
+      // Asignar profesor: enviar SOLO profesor_asignado
+      await Promise.all(
+        seleccionados.map((id) => updateAlumno(id, { profesor_asignado: valor }))
+      );
+    } else {
+      // Otros casos: estado, estado_formacion, curso
+      await Promise.all(
+        seleccionados.map((id) => updateAlumno(id, { [accion]: valor }))
+      );
     }
-  };
+
+    // Refrescar datos
+    await cargarAlumnos();
+    await cargarContadores();
+  } catch (error) {
+    console.error("Error aplicando acción masiva:", error);
+    alert("Hubo un error al aplicar la acción masiva.");
+  } finally {
+    setAccionMasivaOpen(false);
+  }
+};
+
 
   const handleAnterior = () => {
     if (page > 1) setPage(page - 1);

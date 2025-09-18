@@ -4,7 +4,6 @@ import {
   Menu,
   Users,
   ClipboardList,
-  BarChart2,
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
@@ -26,6 +25,7 @@ import HeaderProfesor from "../components/HeaderProfesor";
 import SidebarProfesor from "../components/SidebarProfesor";
 import { getUserFromLocalStorage } from "../hooks/useUser";
 import { fetchTeacherDashboard } from "../services/dashboardService";
+import { fetchContadoresAlumnos } from "../services/alumnosService";
 
 ChartJS.register(
   CategoryScale,
@@ -109,13 +109,19 @@ const DashboardProfesor = () => {
     abortRef.current = new AbortController();
 
     try {
-      const data = await fetchTeacherDashboard({ signal: abortRef.current.signal });
-      // Esperado: { alumnos, actividades, progreso?, renovaciones? }
+      // Pedimos dashboard + contadores en paralelo
+      const [dashRes, contRes] = await Promise.all([
+        fetchTeacherDashboard({ signal: abortRef.current.signal }),
+        fetchContadoresAlumnos(),
+      ]);
+
+      const alumnosAsignados = Number(contRes?.misAlumnos ?? 0);
+
       setStats({
-        alumnos: Number(data.alumnos ?? 0),
-        actividades: Number(data.actividades ?? 0),
-        progreso: Number(data.progreso ?? 0),           // para la gráfica de progreso
-        renovaciones: Number(data.renovaciones ?? 0),   // NUEVO mapeo
+        alumnos: alumnosAsignados,                           // 👈 ahora coincide con "Mis alumnos"
+        actividades: Number(dashRes?.actividades ?? 0),
+        progreso: Number(dashRes?.progreso ?? 0),
+        renovaciones: Number(dashRes?.renovaciones ?? 0),
       });
       setLastUpdated(new Date());
     } catch (err) {
@@ -183,7 +189,6 @@ const DashboardProfesor = () => {
               <div className="flex items-start justify-between mb-6 gap-3">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">Panel de Control</h1>
-                  
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -216,46 +221,45 @@ const DashboardProfesor = () => {
                 </div>
               )}
 
-             {/* Tarjetas de KPIs */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-  {loading ? (
-    <>
-      <SkeletonCard icon={<Users color="#3B82F6" size={32} />} />        {/* blue-500 */}
-      <SkeletonCard icon={<ClipboardList color="#10B981" size={32} />} /> {/* emerald-500 */}
-      <SkeletonCard icon={<RefreshCw color="#F59E0B" size={32} />} />     {/* orange-500 */}
-    </>
-  ) : (
-    <>
-      {/* 👥 Alumnos */}
-      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <Users color="#3B82F6" size={32} />
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
-          <p className="text-gray-600 text-sm">Alumnos Asignados</p>
-        </div>
-      </div>
+              {/* Tarjetas de KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {loading ? (
+                  <>
+                    <SkeletonCard icon={<Users color="#3B82F6" size={32} />} />
+                    <SkeletonCard icon={<ClipboardList color="#10B981" size={32} />} />
+                    <SkeletonCard icon={<RefreshCw color="#F59E0B" size={32} />} />
+                  </>
+                ) : (
+                  <>
+                    {/* 👥 Alumnos */}
+                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+                      <Users color="#3B82F6" size={32} />
+                      <div>
+                        <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
+                        <p className="text-gray-600 text-sm">Alumnos Asignados</p>
+                      </div>
+                    </div>
 
-      {/* 📋 Actividades */}
-      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <ClipboardList color="#10B981" size={32} />
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
-          <p className="text-gray-600 text-sm">Actividades Pendientes</p>
-        </div>
-      </div>
+                    {/* 📋 Actividades */}
+                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+                      <ClipboardList color="#10B981" size={32} />
+                      <div>
+                        <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
+                        <p className="text-gray-600 text-sm">Actividades Pendientes</p>
+                      </div>
+                    </div>
 
-      {/* 🔄 Renovaciones */}
-      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <RefreshCw color="#F59E0B" size={32} />
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">{stats.renovaciones ?? 0}</h2>
-          <p className="text-gray-600 text-sm">Renovaciones</p>
-        </div>
-      </div>
-    </>
-  )}
-</div>
-
+                    {/* 🔄 Renovaciones */}
+                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+                      <RefreshCw color="#F59E0B" size={32} />
+                      <div>
+                        <h2 className="text-2xl font-bold leading-tight">{stats.renovaciones ?? 0}</h2>
+                        <p className="text-gray-600 text-sm">Renovaciones</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Gráficas */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
@@ -321,7 +325,7 @@ const DashboardProfesor = () => {
                             datasets: [
                               {
                                 label: "Calificación",
-                                data: notasSerie,
+                                data: [6.8, 7.2, 7.9, 8.1, 8.4, 8.6],
                                 borderColor: "#8B5CF6",
                                 backgroundColor: "rgba(139, 92, 246, 0.15)",
                                 tension: 0.35,

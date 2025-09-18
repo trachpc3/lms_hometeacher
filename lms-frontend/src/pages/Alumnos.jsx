@@ -41,6 +41,8 @@ const Alumnos = () => {
   const [seleccionados, setSeleccionados] = useState([]);
   const [accionMasivaOpen, setAccionMasivaOpen] = useState(false);
 
+  const [saving, setSaving] = useState({}); // { [id]: boolean }
+
   useEffect(() => {
     cargarAlumnos();
     cargarContadores();
@@ -62,7 +64,7 @@ const Alumnos = () => {
     setAlumnos(res.alumnos);
     setTotal(res.total);
     setPages(res.pages);
-    setSeleccionados([]); // reset selección al recargar
+    setSeleccionados([]);
   };
 
   const cargarContadores = async () => {
@@ -136,16 +138,35 @@ const Alumnos = () => {
   };
 
   const toggleEstado = async (alumno) => {
-    const next = alumno.estado === "activo" ? "pausado" : "activo";
+    if (alumno.estado === "inactivo") return;
+
+    // DB usa 'suspendido'. Para la UI mostramos 'pausado'.
+    const next = alumno.estado === "activo" ? "suspendido" : "activo";
+    const nextLabel = next === "suspendido" ? "pausado" : "activo";
+
+    // 1) Mostrar SIEMPRE aviso inmediato
+    const idToast = toast.loading(`Cambiando estado a ${nextLabel}…`);
+
+    // 2) Optimistic UI
+    const prev = alumno.estado;
+    setAlumnos((prevList) =>
+      prevList.map((a) => (a.id === alumno.id ? { ...a, estado: next } : a))
+    );
+
+    setSaving((s) => ({ ...s, [alumno.id]: true }));
+
     try {
       await updateAlumno(alumno.id, { estado: next });
-      setAlumnos((prev) =>
-        prev.map((a) => (a.id === alumno.id ? { ...a, estado: next } : a))
-      );
-      toast.success(`Estado cambiado a ${next} ▶⏸`);
+      toast.success(`Estado cambiado a ${nextLabel}`, { id: idToast });
     } catch (error) {
       console.error(error);
-      toast.error("❌ No se pudo cambiar el estado");
+      // Revertir
+      setAlumnos((prevList) =>
+        prevList.map((a) => (a.id === alumno.id ? { ...a, estado: prev } : a))
+      );
+      toast.error("❌ No se pudo guardar el cambio. Se revirtió el estado.", { id: idToast });
+    } finally {
+      setSaving((s) => ({ ...s, [alumno.id]: false }));
     }
   };
 
@@ -288,64 +309,69 @@ const Alumnos = () => {
               </td>
             </tr>
           ) : (
-            alumnos.map((alumno) => (
-              <tr key={alumno.id} className="border-b hover:bg-gray-100">
-                <td className="p-3">
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.includes(alumno.id)}
-                    onChange={() => toggleSeleccion(alumno.id)}
-                  />
-                </td>
-                <td className="p-3">{alumno.nombre}</td>
-                <td className="p-3">{alumno.email}</td>
-                <td className="p-3">{alumno.telefono || "N/A"}</td>
-                <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
-                <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
-                <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
-                <td className="p-3">
-                  {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
-                </td>
-                <td className="p-3 flex justify-center gap-3">
-                  <button
-                    onClick={() => toggleEstado(alumno)}
-                    disabled={alumno.estado === "inactivo"}
-                    title={
-                      alumno.estado === "inactivo"
-                        ? "Inactivo (no editable)"
-                        : alumno.estado === "pausado"
-                        ? "Activar alumno"
-                        : "Pausar alumno"
-                    }
-                    className={`${
-                      alumno.estado === "inactivo"
-                        ? "text-gray-300 cursor-not-allowed"
-                        : alumno.estado === "pausado"
-                        ? "text-green-600 hover:text-green-700"
-                        : "text-yellow-600 hover:text-yellow-700"
-                    }`}
-                  >
-                    {alumno.estado === "pausado" ? <Play size={18} /> : <Pause size={18} />}
-                  </button>
+            alumnos.map((alumno) => {
+              const isSaving = !!saving[alumno.id];
+              const isDisabled = alumno.estado === "inactivo" || isSaving;
 
-                  <button
-                    onClick={() => {
-                      setEditData(alumno);
-                      setModalOpen(true);
-                    }}
-                    className="text-blue-600"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(alumno.id)}
-                    className="text-red-600"
-                  >
-                    <Trash size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))
+              return (
+                <tr key={alumno.id} className="border-b hover:bg-gray-100">
+                  <td className="p-3">
+                    <input
+                      type="checkbox"
+                      checked={seleccionados.includes(alumno.id)}
+                      onChange={() => toggleSeleccion(alumno.id)}
+                    />
+                  </td>
+                  <td className="p-3">{alumno.nombre}</td>
+                  <td className="p-3">{alumno.email}</td>
+                  <td className="p-3">{alumno.telefono || "N/A"}</td>
+                  <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
+                  <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
+                  <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
+                  <td className="p-3">
+                    {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
+                  </td>
+                  <td className="p-3 flex justify-center gap-3">
+                    <button
+                      onClick={() => toggleEstado(alumno)}
+                      disabled={isDisabled}
+                      title={
+                        alumno.estado === "inactivo"
+                          ? "Inactivo (no editable)"
+                          : alumno.estado === "suspendido"
+                          ? "Activar alumno"
+                          : "Pausar alumno"
+                      }
+                      className={`transition-colors ${
+                        alumno.estado === "inactivo"
+                          ? "text-gray-300 cursor-not-allowed"
+                          : alumno.estado === "suspendido"
+                          ? "text-green-600 hover:text-green-700"
+                          : "text-yellow-600 hover:text-yellow-700"
+                      } ${isSaving ? "opacity-60" : ""}`}
+                    >
+                      {alumno.estado === "suspendido" ? <Play size={18} /> : <Pause size={18} />}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setEditData(alumno);
+                        setModalOpen(true);
+                      }}
+                      className="text-blue-600"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(alumno.id)}
+                      className="text-red-600"
+                    >
+                      <Trash size={18} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

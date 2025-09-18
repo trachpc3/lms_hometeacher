@@ -119,7 +119,7 @@ export const getAlumnos = async (req, res) => {
   }
 };
 
-/** ✅ Actualizar alumno (permite a profesores reasignar profesor_asignado) */
+/** ✅ Actualizar alumno (permite a profesores reasignar profesor_asignado y togglear estado) */
 export const updateAlumno = async (req, res) => {
   try {
     const { id } = req.params;
@@ -146,16 +146,14 @@ export const updateAlumno = async (req, res) => {
     for (const [k, v] of Object.entries(rawPayload)) {
       if (v !== undefined && allowed.has(k)) payload[k] = v;
     }
-
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ message: "Sin cambios." });
     }
 
     const isProfesor = req.userRole === "profesor";
-    // 🛠️ FIX: en DB el rol es 'administrador'
-    const isAdmin = req.userRole === "administrador";
+    const isAdmin = req.userRole === "administrador"; // FIX
 
-    // 🧭 Resolver curso si llega curso/curso_id (en payload ya solo puede venir curso_id)
+    // Resolver curso si llega curso/curso_id
     if (Object.prototype.hasOwnProperty.call(payload, "curso") || Object.prototype.hasOwnProperty.call(payload, "curso_id")) {
       const resolved = await resolveCursoId(pool, { curso_id: payload.curso_id, curso_nombre: payload.curso });
       payload.curso_id = resolved;
@@ -164,7 +162,7 @@ export const updateAlumno = async (req, res) => {
 
     // ✅ Normalizar/validar estado (mapear "pausado" -> "suspendido")
     if (Object.prototype.hasOwnProperty.call(payload, "estado")) {
-      const mapEstado = { pausado: "suspendido" }; // compatibilidad con frontend/otros clientes
+      const mapEstado = { pausado: "suspendido" };
       const normalized = mapEstado[payload.estado] ?? payload.estado;
       const allowedEstados = new Set(["activo", "inactivo", "suspendido"]);
       if (!allowedEstados.has(normalized)) {
@@ -173,38 +171,33 @@ export const updateAlumno = async (req, res) => {
       payload.estado = normalized;
     }
 
-    // ✅ Validar profesor_asignado si se envía
+    // Validar profesor_asignado si se envía
     if (Object.prototype.hasOwnProperty.call(payload, "profesor_asignado")) {
       const newProfId = payload.profesor_asignado;
-      if (!newProfId) {
-        return res.status(400).json({ message: "profesor_asignado es requerido." });
-      }
+      if (!newProfId) return res.status(400).json({ message: "profesor_asignado es requerido." });
       const [[prof]] = await pool.query(
         "SELECT id FROM usuarios WHERE id=? AND rol='profesor' AND estado='activo' LIMIT 1",
         [newProfId]
       );
-      if (!prof) {
-        return res.status(400).json({ message: "El profesor asignado no existe o no está activo." });
-      }
+      if (!prof) return res.status(400).json({ message: "El profesor asignado no existe o no está activo." });
     }
 
-    // 🚫 Evitar duplicado de email si lo cambian
+    // Evitar duplicado de email si lo cambian
     if (payload.email) {
-      const [dup] = await pool.query("SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1", [payload.email, id]);
+      const [dup] = await pool.query(
+        "SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1",
+        [payload.email, id]
+      );
       if (dup.length) return res.status(409).json({ message: "El email ya está en uso." });
     }
 
-    // 🛡️ Permisos:
-    // - administrador: bypass total
-    // - profesor: solo puede modificar a sus alumnos,
-    //   EXCEPTO cuando el ÚNICO campo es profesor_asignado (reasignación controlada)
+    // 🛡️ Permisos
     if (!isAdmin) {
-      const onlyReassignProfesor =
-        isProfesor &&
-        Object.keys(payload).length === 1 &&
-        Object.prototype.hasOwnProperty.call(payload, "profesor_asignado");
+      const keys = Object.keys(payload);
+      const onlyReassignProfesor = isProfesor && keys.length === 1 && Object.prototype.hasOwnProperty.call(payload, "profesor_asignado");
+      const onlyEstado          = isProfesor && keys.length === 1 && Object.prototype.hasOwnProperty.call(payload, "estado"); // ✅ BYPASS estado
 
-      if (!onlyReassignProfesor && isProfesor) {
+      if (!onlyReassignProfesor && !onlyEstado && isProfesor) {
         const [[own]] = await pool.query(
           "SELECT id FROM usuarios WHERE id=? AND profesor_asignado=? AND rol='estudiante' LIMIT 1",
           [id, req.userId]
@@ -218,7 +211,6 @@ export const updateAlumno = async (req, res) => {
     // 🔨 Construir UPDATE
     const fields = [];
     const params = [];
-
     for (const [k, v] of Object.entries(payload)) {
       if (k === "password") {
         if (!v) continue;
@@ -230,14 +222,12 @@ export const updateAlumno = async (req, res) => {
         params.push(v);
       }
     }
-
     if (!fields.length) return res.status(400).json({ message: "Sin cambios." });
 
     const [result] = await pool.query(
       `UPDATE usuarios SET ${fields.join(", ")} WHERE id = ? AND rol='estudiante'`,
       [...params, id]
     );
-
     if (!result.affectedRows) return res.status(404).json({ message: "Alumno no encontrado." });
 
     res.json({ message: "Alumno actualizado correctamente." });
@@ -246,6 +236,7 @@ export const updateAlumno = async (req, res) => {
     res.status(500).json({ message: error?.sqlMessage || error?.message || "Error interno del servidor." });
   }
 };
+
 
 /** ✅ Soft delete */
 export const deleteAlumno = async (req, res) => {

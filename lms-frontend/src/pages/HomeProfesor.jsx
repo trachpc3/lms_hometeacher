@@ -39,7 +39,7 @@ ChartJS.register(
   LineElement
 );
 
-const SkeletonCard = ({ icon, title = "—", subtitle = "Cargando…" }) => (
+const SkeletonCard = ({ icon }) => (
   <div className="bg-white p-6 shadow-md rounded-2xl flex items-center space-x-4">
     <div className="animate-pulse">{icon}</div>
     <div className="w-full">
@@ -49,7 +49,7 @@ const SkeletonCard = ({ icon, title = "—", subtitle = "Cargando…" }) => (
   </div>
 );
 
-const SkeletonChart = ({ title = "Cargando…" }) => (
+const SkeletonChart = () => (
   <div className="bg-white p-6 shadow-md rounded-2xl">
     <div className="h-5 w-40 bg-gray-200 rounded animate-pulse mb-4" />
     <div className="h-64 bg-gray-100 rounded animate-pulse" />
@@ -73,7 +73,12 @@ const useTimeAgo = (date) => {
 
 const DashboardProfesor = () => {
   const [user, setUser] = useState({ nombre: "", imagen: "" });
-  const [stats, setStats] = useState({ alumnos: 0, actividades: 0, progreso: 0 });
+  const [stats, setStats] = useState({
+    alumnos: 0,
+    actividades: 0,
+    progreso: 0,      // sigue existiendo para las gráficas
+    renovaciones: 0,  // NUEVO para la card
+  });
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -105,19 +110,18 @@ const DashboardProfesor = () => {
 
     try {
       const data = await fetchTeacherDashboard({ signal: abortRef.current.signal });
-      // Esperado mínimo: { alumnos, actividades, progreso }
+      // Esperado: { alumnos, actividades, progreso?, renovaciones? }
       setStats({
         alumnos: Number(data.alumnos ?? 0),
         actividades: Number(data.actividades ?? 0),
-        progreso: Number(data.progreso ?? 0),
-        // Si tu API ya devuelve series, añade aquí: progresoMensual, actividadesPorEstado, etc.
+        progreso: Number(data.progreso ?? 0),           // para la gráfica de progreso
+        renovaciones: Number(data.renovaciones ?? 0),   // NUEVO mapeo
       });
       setLastUpdated(new Date());
     } catch (err) {
       setError(err?.message || "No se pudo cargar el dashboard.");
     } finally {
       setLoading(false);
-      // Dejamos un pequeño retraso visual para evitar “pop” del skeleton de charts
       setTimeout(() => setChartsLoading(false), 150);
     }
   };
@@ -125,25 +129,19 @@ const DashboardProfesor = () => {
   const timeAgo = useTimeAgo(lastUpdated);
 
   // ======= Datos para charts =======
-  // Si el backend aún no provee series, generamos series derivadas “suaves” para visualización.
   const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"];
   const progresoSerie = useMemo(() => {
-    // Suaviza hacia el objetivo 'stats.progreso'
     const base = [20, 35, 45, 55, 65, Math.max(10, Math.min(100, stats.progreso))];
     return base;
   }, [stats.progreso]);
 
   const actividadesDistribucion = useMemo(() => {
-    // 60/40 si no hay más info
     const completadas = Math.round(stats.actividades * 0.6);
     const pendientes = Math.max(0, stats.actividades - completadas);
     return [completadas, pendientes];
   }, [stats.actividades]);
 
-  const notasSerie = useMemo(() => {
-    // Serie de ejemplo estabilizada
-    return [6.8, 7.2, 7.9, 8.1, 8.4, 8.6];
-  }, []);
+  const notasSerie = useMemo(() => [6.8, 7.2, 7.9, 8.1, 8.4, 8.6], []);
 
   const chartOptions = {
     responsive: true,
@@ -167,10 +165,13 @@ const DashboardProfesor = () => {
 
       <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
         <div className="sticky top-0 z-40 bg-gray-50 shadow-sm border-b border-gray-200">
-          <HeaderProfesor user={user} handleLogout={() => {
-            localStorage.removeItem("user");
-            navigate("/");
-          }} />
+          <HeaderProfesor
+            user={user}
+            handleLogout={() => {
+              localStorage.removeItem("user");
+              navigate("/");
+            }}
+          />
         </div>
 
         <main className="flex-1 p-6 overflow-y-auto bg-gray-100">
@@ -220,62 +221,46 @@ const DashboardProfesor = () => {
                 </div>
               )}
 
-             {/* Tarjetas de KPIs */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-  {loading ? (
-    <>
-      <SkeletonCard icon={<Users className="text-blue-400" size={32} />} />
-      <SkeletonCard icon={<ClipboardList className="text-green-400" size={32} />} />
-      <SkeletonCard icon={<BarChart2 className="text-purple-400" size={32} />} />
-    </>
-  ) : (
-    <>
-      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
-          <Users size={24} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
-          <p className="text-gray-600 text-sm">Alumnos Asignados</p>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-          <ClipboardList size={24} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
-          <p className="text-gray-600 text-sm">Actividades Pendientes</p>
-        </div>
-      </div>
-
-      {/* 🔄 Card de Renovaciones (antes Progreso Promedio) */}
-      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
-          <BarChart2 size={24} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">
-            {stats.renovaciones ?? 0}
-          </h2>
-          <p className="text-gray-600 text-sm">Renovaciones</p>
-        </div>
-      </div>
-    </>
-  )}
-</div>
-
+              {/* Tarjetas de KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {loading ? (
+                  <>
+                    <SkeletonCard icon={<Users className="text-blue-400" size={32} />} />
+                    <SkeletonCard icon={<ClipboardList className="text-green-400" size={32} />} />
+                    <SkeletonCard icon={<BarChart2 className="text-purple-400" size={32} />} />
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                        <Users size={24} />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
+                        <p className="text-gray-600 text-sm">Alumnos Asignados</p>
+                      </div>
+                    </div>
 
                     <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-violet-50 text-violet-600">
+                      <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+                        <ClipboardList size={24} />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
+                        <p className="text-gray-600 text-sm">Actividades Pendientes</p>
+                      </div>
+                    </div>
+
+                    {/* 🔄 Card de Renovaciones (sustituye Progreso Promedio) */}
+                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
                         <BarChart2 size={24} />
                       </div>
                       <div>
                         <h2 className="text-2xl font-bold leading-tight">
-                          {Number.isFinite(stats.progreso) ? stats.progreso : 0}%
+                          {stats.renovaciones ?? 0}
                         </h2>
-                        <p className="text-gray-600 text-sm">Progreso Promedio</p>
+                        <p className="text-gray-600 text-sm">Renovaciones</p>
                       </div>
                     </div>
                   </>
@@ -303,7 +288,7 @@ const DashboardProfesor = () => {
                               {
                                 label: "Progreso (%)",
                                 data: progresoSerie,
-                                backgroundColor: "#3B82F6", // blue-500
+                                backgroundColor: "#3B82F6",
                                 borderRadius: 10,
                               },
                             ],
@@ -323,7 +308,7 @@ const DashboardProfesor = () => {
                             datasets: [
                               {
                                 data: actividadesDistribucion,
-                                backgroundColor: ["#22C55E", "#EF4444"], // green-500, red-500
+                                backgroundColor: ["#22C55E", "#EF4444"],
                                 borderWidth: 0,
                               },
                             ],
@@ -347,7 +332,7 @@ const DashboardProfesor = () => {
                               {
                                 label: "Calificación",
                                 data: notasSerie,
-                                borderColor: "#8B5CF6", // violet-500
+                                borderColor: "#8B5CF6",
                                 backgroundColor: "rgba(139, 92, 246, 0.15)",
                                 tension: 0.35,
                                 fill: true,

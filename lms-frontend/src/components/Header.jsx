@@ -55,7 +55,7 @@ const Header = ({
 
         {/* Mensajes (chat con profesor) */}
         <button
-          onClick={() => navigate("/dashboard-profesor/mensajes")}
+          onClick={() => navigate("/mensajes")}
           className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
           aria-label="Mensajes (chatear con tu profesor)"
           title="Mensajes (chatear con tu profesor)"

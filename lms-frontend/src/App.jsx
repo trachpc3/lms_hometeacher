@@ -1,5 +1,5 @@
 // src/App.jsx
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 
 // Páginas
@@ -25,7 +25,7 @@ import HomeFundae from "./pages/HomeFundae";
 import FundaeUsers from "./pages/FundaeUsers";
 import ProductiveSkillsPage from "./pages/ProductiveSkills";
 
-// Recuperación de contraseña
+// Auth/registro
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
@@ -34,40 +34,57 @@ import FundaePage from "./pages/FundaePage";
 // Mensajes (chat)
 import Mensajes from "./pages/Mensajes";
 
-// Notificaciones (placeholder)
+// Placeholder Notificaciones
 const Notificaciones = () => (
   <div className="p-6 text-center">
     <h1 className="text-2xl font-bold mb-2">🔔 Notificaciones</h1>
-    <p className="text-gray-600">
-      Aquí aparecerán las notificaciones del sistema (en desarrollo).
-    </p>
+    <p className="text-gray-600">Aquí aparecerán las notificaciones del sistema (en desarrollo).</p>
   </div>
 );
+
+// Redirección inteligente para la ruta legacy /mensajes
+const MensajesGate = () => {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const rol = user?.rol;
+  const to = rol === "profesor" ? "/dashboard-profesor/mensajes" : "/home/mensajes";
+  return <Navigate to={to} replace />;
+};
 
 const router = createBrowserRouter(
   [
     { path: "/", element: <Login /> },
-    { path: "/home", element: <Home /> },
     { path: "/pricing", element: <Pricing /> },
     { path: "/test-nivel", element: <TestNivel /> },
     { path: "/perfil", element: <ProfilePage /> },
 
-    // Rutas globales
-    { path: "/mensajes", element: <Mensajes /> },          // Alumno (top-level)
+    // Ruta compat: decide layout según rol
+    { path: "/mensajes", element: <MensajesGate /> },
     { path: "/notificaciones", element: <Notificaciones /> },
 
-    // Profesor (layout con sidebar + header)
+    // ===== Alumno (layout: Home) =====
+    // Asegúrate de poner <Outlet /> dentro de Home.jsx
+    {
+      path: "/home",
+      element: <Home />,
+      children: [
+        // Si tu Home ya muestra el dashboard por sí mismo, puedes dejar sin index.
+        // Si quieres un hijo por defecto: { index: true, element: <AlgoDelAlumno/> },
+        { path: "mensajes", element: <Mensajes /> }, // 👈 Mensajes dentro del layout de alumno
+      ],
+    },
+
+    // ===== Profesor (layout: DashboardProfesor) =====
     {
       path: "/dashboard-profesor",
       element: <DashboardProfesor />,
       children: [
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
-        { path: "mensajes", element: <Mensajes /> },       // Profesor (hereda layout)
+        { path: "mensajes", element: <Mensajes /> }, // 👈 Mensajes dentro del layout del profe
       ],
     },
 
-    // Fundae
+    // ===== Fundae (layout) =====
     {
       path: "/fundae",
       element: <HomeFundae />,
@@ -75,12 +92,12 @@ const router = createBrowserRouter(
         { index: true, element: <FundaePage /> },
         { path: "envios", element: <FundaeList /> },
         { path: "usuarios", element: <FundaeUsers /> },
-        // Si quieres mensajes dentro de Fundae más adelante:
+        // Si quisieras también mensajes aquí más adelante:
         // { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
-    // Unidades/actividades
+    // ===== Rutas de unidades/actividades (si no dependen de layout de alumno) =====
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },
@@ -92,6 +109,11 @@ const router = createBrowserRouter(
     { path: "/unidad/:unitId/speaking", element: <CharacterSelection /> },
     { path: "/speaking/:actividadId", element: <CharacterSelection /> },
     { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> },
+
+    // ===== Auth extra =====
+    { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
+    { path: "/restablecer-contraseña", element: <ResetPassword /> },
+    { path: "/register", element: <Register /> },
 
     // 404
     {

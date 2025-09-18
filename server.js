@@ -29,6 +29,8 @@ import speakingRoutes from "./routes/speakingRoutes.js";
 import actividadesRoutes from "./routes/actividadesRoutes.js";
 import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
 import testnivelRoutes from "./routes/testnivelRoutes.js";
+import profesoresRoutes from "./routes/profesoresRoutes.js";
+
 
 // __dirname para ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -95,6 +97,8 @@ app.use("/api/speaking", verifyToken, speakingRoutes);
 app.use("/api/actividades", verifyToken, actividadesRoutes);
 app.use("/api/productive-skills", verifyToken, productiveSkillsRoutes);
 app.use("/api/testnivel", verifyToken, testnivelRoutes);
+app.use("/api/profesores", verifyToken, profesoresRoutes);
+
 
 // Error handler genérico
 app.use((err, req, res, next) => {

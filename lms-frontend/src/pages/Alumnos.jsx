@@ -229,7 +229,7 @@ const Alumnos = () => {
                   : "bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
-              Solo mis alumnos ({misAlumnos})
+              Mis alumnos ({misAlumnos})
             </button>
           </div>
 

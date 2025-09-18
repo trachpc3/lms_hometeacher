@@ -1,6 +1,7 @@
 // src/pages/Mensajes.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquarePlus, Send, Search } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   startConversation,
   listConversations,
@@ -11,6 +12,7 @@ import {
 import { useUser } from "@/context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import NewConversationModal from "@/components/NewConversationModal";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function PeerAvatar({ peer }) {
   const src = getAvatarUrl(peer?.imagen);
@@ -24,7 +26,7 @@ function PeerAvatar({ peer }) {
 export default function Mensajes() {
   const { user } = useUser(); // { id, rol, nombre, imagen }
   const [convs, setConvs] = useState([]);
-  const [active, setActive] = useState(null); // conversación activa
+  const [active, setActive] = useState(null);
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
@@ -34,87 +36,107 @@ export default function Mensajes() {
   const bottomRef = useRef(null);
 
   const isProfesor = user?.rol === "profesor";
-  const isAlumno = user?.rol === "estudiante";
+  const isAlumno = user?.rol === "estudiante" || user?.rol === "alumno"; // 👈 por si tu payload usa "alumno"
 
-  // Cargar lista de conversaciones al entrar
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Redirige si entran a /mensajes sueltos
   useEffect(() => {
-    const abort = new AbortController();
+    if (location.pathname === "/mensajes") {
+      if (isProfesor) navigate("/dashboard-profesor/mensajes", { replace: true });
+      else if (isAlumno) navigate("/home/mensajes", { replace: true });
+    }
+  }, [location.pathname, isProfesor, isAlumno, navigate]);
+
+  // Cargar conversaciones (y auto-crear para alumno si no hay)
+  useEffect(() => {
+    let ignore = false;
     (async () => {
       setLoadingList(true);
       try {
+        console.debug("[Mensajes] listConversations:start");
         const { conversations } = await listConversations();
-        if (abort.signal.aborted) return;
+        if (ignore) return;
+        console.debug("[Mensajes] listConversations:ok", conversations);
         setConvs(conversations);
 
         if (conversations.length) {
           setActive(conversations[0]);
         } else if (isAlumno) {
-          // Alumno: si no tiene convs, iniciamos con su profesor asignado
-          const { conversationId } = await startConversation();
-          if (abort.signal.aborted) return;
-          const again = await listConversations();
-          if (abort.signal.aborted) return;
-          const found = again.conversations.find((c) => c.id === conversationId) || again.conversations[0];
-          setConvs(again.conversations);
-          setActive(found || null);
+          // Alumno: si no hay hilos, intentamos crearlo con su profesor asignado
+          console.debug("[Mensajes] startConversation for alumno (no convs)");
+          try {
+            await startConversation(); // backend deduce profesor_asignado
+            const again = await listConversations();
+            if (ignore) return;
+            setConvs(again.conversations || []);
+            setActive(again.conversations?.[0] || null);
+            toast.success("Conversación con tu profesor está lista.");
+          } catch (e) {
+            console.error("[Mensajes] startConversation alumno FAILED", e);
+            toast.error(e?.message || "No se pudo preparar la conversación con tu profesor.");
+          }
         }
       } catch (e) {
-        // silenciamos errores 401 (redirige en SafeFetch si lo configuraste)
-        console.error(e);
+        console.error("[Mensajes] listConversations FAILED", e);
+        toast.error(e?.message || "No se pudieron cargar conversaciones");
       } finally {
-        if (!abort.signal.aborted) setLoadingList(false);
+        if (!ignore) setLoadingList(false);
       }
     })();
-    return () => abort.abort();
+    return () => {
+      ignore = true;
+    };
   }, [isAlumno]);
 
-  // Cargar mensajes cuando cambia la conversación
+  // Cargar mensajes cuando cambia la conversación activa
   useEffect(() => {
     if (!active) {
       setMsgs([]);
       return;
     }
-    const abort = new AbortController();
+    let ignore = false;
     (async () => {
       setLoadingChat(true);
       try {
         const { messages } = await getMessages(active.id);
-        if (abort.signal.aborted) return;
+        if (ignore) return;
         setMsgs(messages);
-        await markRead(active.id); // marcar como leídos
-        if (abort.signal.aborted) return;
-        // refrescar conteo no leídos de esa conv en la lista
-        setConvs((prev) =>
-          prev.map((c) => (c.id === active.id ? { ...c, unread: 0 } : c))
-        );
-        // scroll al final
+        await markRead(active.id);
+        if (ignore) return;
+        setConvs((prev) => prev.map((c) => (c.id === active.id ? { ...c, unread: 0 } : c)));
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
       } catch (e) {
-        console.error(e);
+        console.error("[Mensajes] get/mark FAILED", e);
+        toast.error(e?.message || "No se pudieron cargar los mensajes");
       } finally {
-        if (!abort.signal.aborted) setLoadingChat(false);
+        if (!ignore) setLoadingChat(false);
       }
     })();
-    return () => abort.abort();
+    return () => {
+      ignore = true;
+    };
   }, [active?.id]);
 
-  // Nueva conversación (alumno: directa con su profe; profe: abre modal)
   const handleNew = async () => {
     if (isAlumno) {
       try {
+        console.debug("[Mensajes] alumno -> startConversation()");
         await startConversation();
         const { conversations } = await listConversations();
         setConvs(conversations);
         setActive(conversations[0] || null);
+        toast.success("Conversación preparada.");
       } catch (e) {
         console.error(e);
+        toast.error(e?.message || "No se pudo iniciar la conversación");
       }
     } else if (isProfesor) {
       setModalOpen(true);
     }
   };
 
-  // Al elegir alumno en el modal (para profesor)
   const handlePickAlumno = async ({ userId }) => {
     try {
       await startConversation({ toUserId: userId, toRole: "estudiante" });
@@ -126,6 +148,7 @@ export default function Mensajes() {
       setActive(found || conversations[0] || null);
     } catch (e) {
       console.error(e);
+      toast.error(e?.message || "No se pudo iniciar la conversación");
     } finally {
       setModalOpen(false);
     }
@@ -136,10 +159,8 @@ export default function Mensajes() {
     if (!body || !active) return;
     try {
       const msg = await sendMessage(active.id, body);
-      // añade al hilo
       setMsgs((prev) => [...prev, msg]);
       setText("");
-      // refresca preview en la lista (último mensaje + orden si quieres)
       setConvs((prev) =>
         prev
           .map((c) =>
@@ -152,10 +173,10 @@ export default function Mensajes() {
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
     } catch (e) {
       console.error(e);
+      toast.error(e?.message || "No se pudo enviar");
     }
   };
 
-  // Filtro local por nombre del peer o texto del último mensaje
   const filteredConvs = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return convs;
@@ -168,7 +189,7 @@ export default function Mensajes() {
 
   return (
     <div className="h-full grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Lista de conversaciones */}
+      {/* Lista */}
       <aside className="bg-white rounded-2xl shadow p-4 md:col-span-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">Mensajes</h2>
@@ -195,9 +216,7 @@ export default function Mensajes() {
           {loadingList ? (
             <p className="text-sm text-gray-500 p-2">Cargando…</p>
           ) : filteredConvs.length === 0 ? (
-            <div className="text-sm text-gray-500 p-2">
-              Aún no tienes conversaciones.
-            </div>
+            <div className="text-sm text-gray-500 p-2">Aún no tienes conversaciones.</div>
           ) : (
             <ul className="space-y-1">
               {filteredConvs.map((c) => (
@@ -205,17 +224,13 @@ export default function Mensajes() {
                   <button
                     onClick={() => setActive(c)}
                     className={`w-full p-2 rounded-xl flex items-center gap-3 hover:bg-gray-50 border ${
-                      active?.id === c.id
-                        ? "bg-gray-50 border-gray-200"
-                        : "border-transparent"
+                      active?.id === c.id ? "bg-gray-50 border-gray-200" : "border-transparent"
                     }`}
                   >
                     <PeerAvatar peer={c.peer} />
                     <div className="flex-1 min-w-0 text-left">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">
-                          {c.peer?.nombre || "Conversación"}
-                        </span>
+                        <span className="font-medium truncate">{c.peer?.nombre || "Conversación"}</span>
                         {c.unread > 0 && (
                           <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white">
                             {c.unread > 99 ? "99+" : c.unread}
@@ -234,7 +249,7 @@ export default function Mensajes() {
         </div>
       </aside>
 
-      {/* Ventana de chat */}
+      {/* Chat */}
       <section className="bg-white rounded-2xl shadow p-4 md:col-span-2 flex flex-col">
         {!active ? (
           <div className="m-auto text-center text-gray-500">
@@ -263,9 +278,7 @@ export default function Mensajes() {
               {loadingChat ? (
                 <p className="text-sm text-gray-500 text-center mt-6">Cargando mensajes…</p>
               ) : msgs.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center mt-6">
-                  Aún no hay mensajes. ¡Escribe el primero!
-                </p>
+                <p className="text-sm text-gray-500 text-center mt-6">Aún no hay mensajes. ¡Escribe el primero!</p>
               ) : (
                 msgs.map((m) => {
                   const me = m.senderRole === user?.rol && m.senderId === user?.id;
@@ -273,9 +286,7 @@ export default function Mensajes() {
                     <div key={m.id} className={`flex ${me ? "justify-end" : "justify-start"}`}>
                       <div
                         className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow ${
-                          me
-                            ? "bg-blue-600 text-white rounded-br-sm"
-                            : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                          me ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-800 rounded-bl-sm"
                         }`}
                       >
                         {m.body}
@@ -307,7 +318,7 @@ export default function Mensajes() {
         )}
       </section>
 
-      {/* Modal para profesor */}
+      {/* Modal profesor */}
       <NewConversationModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}

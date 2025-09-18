@@ -7,10 +7,10 @@ import {
   getMessages,
   sendMessage,
   markRead,
-} from "@/services/mensajesService";
-import { useUser } from "@/context/UserContext";
-import { getAvatarUrl } from "@/utils/getAvatarUrl";
-import NewConversationModal from "@/components/NewConversationModal";
+} from "../services/mensajesService";
+import { useUser } from "../context/UserContext";
+import { getAvatarUrl } from "../utils/getAvatarUrl";
+import NewConversationModal from "../components/NewConversationModal";
 
 function PeerAvatar({ peer }) {
   const src = getAvatarUrl(peer?.imagen);

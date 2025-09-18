@@ -128,35 +128,60 @@ export const updateAlumno = async (req, res) => {
       return res.status(400).json({ message: "No se recibieron datos para actualizar." });
     }
 
-    // ⚖️ Regla de permisos:
-    // - Si el usuario es PROFESOR, solo puede modificar a sus propios alumnos,
-    //   excepto cuando la ÚNICA modificación es reasignar el profesor (profesor_asignado).
-    const isProfesor = req.userRole === "profesor";
-    const onlyReassignProfesor =
-      isProfesor &&
-      Object.keys(req.body).length === 1 &&
-      Object.prototype.hasOwnProperty.call(req.body, "profesor_asignado");
+    // 🔧 Normalizar payload: si llega "profesor", mapear a "profesor_asignado"
+    const rawPayload = { ...req.body };
+    if (Object.prototype.hasOwnProperty.call(rawPayload, "profesor") && !rawPayload.profesor_asignado) {
+      rawPayload.profesor_asignado = rawPayload.profesor;
+      delete rawPayload.profesor;
+    }
 
-    if (isProfesor && !onlyReassignProfesor) {
-      const [[own]] = await pool.query(
-        "SELECT id FROM usuarios WHERE id=? AND profesor_asignado=? AND rol='estudiante' LIMIT 1",
-        [id, req.userId]
-      );
-      if (!own) {
-        return res.status(403).json({ message: "No puedes modificar alumnos de otro profesor." });
+    // Campos permitidos
+    const allowed = new Set([
+      "nombre", "apellidos", "telefono", "email", "password",
+      "profesor_asignado", "curso_id", "estado_formacion", "observaciones", "estado"
+    ]);
+
+    // Filtrar payload a solo campos permitidos y definidos
+    const payload = {};
+    for (const [k, v] of Object.entries(rawPayload)) {
+      if (v !== undefined && allowed.has(k)) payload[k] = v;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return res.status(400).json({ message: "Sin cambios." });
+    }
+
+    const isProfesor = req.userRole === "profesor";
+    const isAdmin = req.userRole === "admin";
+
+    // 🛡️ Permisos:
+    // - admin: bypass total
+    // - profesor: solo puede modificar a sus alumnos, EXCEPTO cuando el ÚNICO campo es profesor_asignado (reasignación)
+    if (!isAdmin) {
+      const onlyReassignProfesor =
+        isProfesor &&
+        Object.keys(payload).length === 1 &&
+        Object.prototype.hasOwnProperty.call(payload, "profesor_asignado");
+
+      if (!onlyReassignProfesor && isProfesor) {
+        const [[own]] = await pool.query(
+          "SELECT id FROM usuarios WHERE id=? AND profesor_asignado=? AND rol='estudiante' LIMIT 1",
+          [id, req.userId]
+        );
+        if (!own) {
+          return res.status(403).json({ message: "No puedes modificar alumnos de otro profesor." });
+        }
       }
     }
 
-    const payload = { ...req.body };
-
-    // Resolución de curso (si llega curso/curso_id)
-    if (payload.curso || payload.curso_id) {
+    // Resolver curso si llega curso/curso_id (en payload ya solo puede venir curso_id)
+    if (Object.prototype.hasOwnProperty.call(payload, "curso") || Object.prototype.hasOwnProperty.call(payload, "curso_id")) {
       const resolved = await resolveCursoId(pool, { curso_id: payload.curso_id, curso_nombre: payload.curso });
       payload.curso_id = resolved;
       delete payload.curso;
     }
 
-    // 🔎 Validar profesor_asignado si se envía (que exista y sea profesor activo)
+    // Validar profesor_asignado si se envía
     if (Object.prototype.hasOwnProperty.call(payload, "profesor_asignado")) {
       const newProfId = payload.profesor_asignado;
       if (!newProfId) {
@@ -171,23 +196,17 @@ export const updateAlumno = async (req, res) => {
       }
     }
 
-    // Campos permitidos
-    const allowed = new Set([
-      "nombre", "apellidos", "telefono", "email", "password",
-      "profesor_asignado", "curso_id", "estado_formacion", "observaciones", "estado"
-    ]);
-
-    const fields = [];
-    const params = [];
-
     // Evitar duplicado de email si lo cambian
     if (payload.email) {
       const [dup] = await pool.query("SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1", [payload.email, id]);
       if (dup.length) return res.status(409).json({ message: "El email ya está en uso." });
     }
 
+    // Construir UPDATE
+    const fields = [];
+    const params = [];
+
     for (const [k, v] of Object.entries(payload)) {
-      if (!allowed.has(k)) continue;
       if (k === "password") {
         if (!v) continue;
         const hashed = String(v).startsWith("$2b$") ? v : await bcrypt.hash(String(v), 10);
@@ -249,14 +268,12 @@ export const getAlumnosStats = async (req, res) => {
     const userId = req.userId;
     const userRole = req.userRole;
 
-    // Total alumnos activos
     const [[{ totalAlumnos }]] = await pool.query(`
       SELECT COUNT(*) AS totalAlumnos 
       FROM usuarios 
       WHERE rol = 'estudiante' AND estado = 'activo'
     `);
 
-    // Mis alumnos (solo si es profesor)
     let misAlumnos = 0;
     if (userRole === "profesor") {
       const [[{ total }]] = await pool.query(

@@ -1,23 +1,24 @@
 // src/components/HeaderFundae.jsx
-import { useState } from "react";
-import { HelpCircle, Menu, LogOut, User, Bell } from "lucide-react";
+import { useState, useEffect } from "react";
+import { HelpCircle, Menu, LogOut, User, Bell, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getAvatarUrl } from "@/utils/getAvatarUrl";
 
-// Si usas getAvatarUrl en el resto del proyecto, podemos unificarlo después.
-// Aquí mantengo tu lógica con API_UPLOADS_URL.
-const HeaderFundae = ({ user = {}, toggleSidebar, handleLogout, unreadCount = 0 }) => {
+const HeaderFundae = ({
+  user = {},
+  toggleSidebar,
+  handleLogout,
+  unreadMsgs = 0,
+  unreadNotifs = 0,
+}) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState("");
 
-  console.log("🔍 Usuario en HeaderFundae:", user);
-  console.log("📢 handleLogout recibido:", handleLogout);
-
-  const avatarSrc =
-    user?.imagen && user.imagen !== "default-profile.jpg"
-      ? user.imagen.startsWith("http")
-        ? user.imagen
-        : `${API_UPLOADS_URL}/${user.imagen.replace(/^uploads\/|^images\//, "")}`
-      : `${API_UPLOADS_URL}/default-profile.jpg`; // ← corregido (template string)
+  useEffect(() => {
+    // unificamos: cache-buster por _updatedAt
+    setAvatarSrc(getAvatarUrl(user?.imagen, user?._updatedAt));
+  }, [user?.imagen, user?._updatedAt]);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -38,27 +39,46 @@ const HeaderFundae = ({ user = {}, toggleSidebar, handleLogout, unreadCount = 0 
         <HelpCircle size={20} /> Centro de Ayuda
       </button>
 
-      {/* Acciones y perfil */}
+      {/* Acciones derechas: Mensajes + Notificaciones + Perfil */}
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Campanita / Mensajería */}
+        {/* Mensajes */}
         <button
           onClick={() => navigate("/mensajes")}
-          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Abrir mensajes"
+          className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Mensajes"
           title="Mensajes"
         >
-          <Bell size={20} />
-          {unreadCount > 0 && (
+          <MessageCircle size={20} />
+          <span className="hidden md:inline font-medium">Mensajes</span>
+          {unreadMsgs > 0 && (
             <span
               className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow"
-              aria-label={`${unreadCount} mensajes sin leer`}
+              aria-label={`${unreadMsgs} mensajes sin leer`}
             >
-              {unreadCount > 99 ? "99+" : unreadCount}
+              {unreadMsgs > 99 ? "99+" : unreadMsgs}
             </span>
           )}
         </button>
 
-        {/* Dropdown de perfil */}
+        {/* Notificaciones */}
+        <button
+          onClick={() => navigate("/notificaciones")}
+          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Notificaciones del sistema"
+          title="Notificaciones"
+        >
+          <Bell size={20} />
+          {unreadNotifs > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-indigo-600 text-white text-[10px] leading-4 text-center font-semibold shadow"
+              aria-label={`${unreadNotifs} notificaciones sin leer`}
+            >
+              {unreadNotifs > 99 ? "99+" : unreadNotifs}
+            </span>
+          )}
+        </button>
+
+        {/* Perfil */}
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -76,7 +96,7 @@ const HeaderFundae = ({ user = {}, toggleSidebar, handleLogout, unreadCount = 0 
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = `${API_UPLOADS_URL}/default-profile.jpg`;
+                  e.currentTarget.src = getAvatarUrl("default-profile.jpg");
                 }}
               />
             </div>
@@ -84,11 +104,14 @@ const HeaderFundae = ({ user = {}, toggleSidebar, handleLogout, unreadCount = 0 
 
           {dropdownOpen && (
             <div
-              className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 overflow-hidden"
+              className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 overflow-hidden border border-gray-100"
               role="menu"
             >
               <button
-                onClick={() => navigate("/perfil")}
+                onClick={() => {
+                  setDropdownOpen(false);
+                  navigate("/perfil");
+                }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                 role="menuitem"
               >
@@ -97,7 +120,6 @@ const HeaderFundae = ({ user = {}, toggleSidebar, handleLogout, unreadCount = 0 
               </button>
               <button
                 onClick={() => {
-                  console.log("🔴 Clic en cerrar sesión (Fundae)");
                   setDropdownOpen(false);
                   if (typeof handleLogout === "function") {
                     handleLogout();

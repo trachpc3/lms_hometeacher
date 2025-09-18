@@ -1,10 +1,16 @@
 // src/components/HeaderProfesor.jsx
 import { useState, useEffect } from "react";
-import { HelpCircle, Menu, LogOut, User, Bell } from "lucide-react";
+import { HelpCircle, Menu, LogOut, User, Bell, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 
-const HeaderProfesor = ({ user, toggleSidebar, handleLogout, unreadCount = 0 }) => {
+const HeaderProfesor = ({
+  user,
+  toggleSidebar,
+  handleLogout,
+  unreadMsgs = 0,
+  unreadNotifs = 0,
+}) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState("");
@@ -32,22 +38,41 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout, unreadCount = 0 }) 
         <HelpCircle size={20} /> Centro de Ayuda
       </button>
 
-      {/* Área derecha: Mensajería + Perfil */}
+      {/* Área derecha: Mensajes + Notificaciones + Perfil */}
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Campanita/Mensajería */}
+        {/* Mensajes */}
         <button
           onClick={() => navigate("/mensajes")}
-          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Abrir mensajes"
+          className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Mensajes"
           title="Mensajes"
         >
-          <Bell size={20} />
-          {unreadCount > 0 && (
+          <MessageCircle size={20} />
+          <span className="hidden md:inline font-medium">Mensajes</span>
+          {unreadMsgs > 0 && (
             <span
               className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow"
-              aria-label={`${unreadCount} mensajes sin leer`}
+              aria-label={`${unreadMsgs} mensajes sin leer`}
             >
-              {unreadCount > 99 ? "99+" : unreadCount}
+              {unreadMsgs > 99 ? "99+" : unreadMsgs}
+            </span>
+          )}
+        </button>
+
+        {/* Notificaciones */}
+        <button
+          onClick={() => navigate("/notificaciones")}
+          className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
+          aria-label="Notificaciones del sistema"
+          title="Notificaciones"
+        >
+          <Bell size={20} />
+          {unreadNotifs > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-indigo-600 text-white text-[10px] leading-4 text-center font-semibold shadow"
+              aria-label={`${unreadNotifs} notificaciones sin leer`}
+            >
+              {unreadNotifs > 99 ? "99+" : unreadNotifs}
             </span>
           )}
         </button>
@@ -66,7 +91,7 @@ const HeaderProfesor = ({ user, toggleSidebar, handleLogout, unreadCount = 0 }) 
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300">
               <img
                 src={avatarSrc}
-                alt="Foto de perfil"
+                alt="User"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;

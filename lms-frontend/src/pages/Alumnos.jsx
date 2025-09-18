@@ -9,6 +9,7 @@ import {
 } from "../services/alumnosService";
 import AlumnoModal from "../components/AlumnoModal";
 import AccionMasivaModal from "../components/AccionMasivaModal";
+import toast, { Toaster } from "react-hot-toast";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -37,9 +38,6 @@ const Alumnos = () => {
   const [totalAlumnos, setTotalAlumnos] = useState(0);
   const [misAlumnos, setMisAlumnos] = useState(0);
 
-  const [loading, setLoading] = useState(false);
-
-  // Para selección múltiple
   const [seleccionados, setSeleccionados] = useState([]);
   const [accionMasivaOpen, setAccionMasivaOpen] = useState(false);
 
@@ -50,29 +48,21 @@ const Alumnos = () => {
   }, [soloMisAlumnos, filtroTexto, filtroCampo, page]);
 
   const cargarAlumnos = async () => {
-    setLoading(true);
-    try {
-      const params = {
-        mine: soloMisAlumnos ? 1 : undefined,
-        page,
-        limit: 10,
-      };
+    const params = {
+      mine: soloMisAlumnos ? 1 : undefined,
+      page,
+      limit: 10,
+    };
 
-      if (filtroTexto) {
-        params.q = filtroTexto;
-      }
-
-      const res = await fetchAlumnos(params);
-      setAlumnos(res.alumnos);
-      setTotal(res.total);
-      setPages(res.pages);
-      // Si cambias de página o filtro, limpiar selección
-      setSeleccionados([]);
-    } catch (error) {
-      console.error("Error al cargar alumnos:", error);
-    } finally {
-      setLoading(false);
+    if (filtroTexto) {
+      params.q = filtroTexto;
     }
+
+    const res = await fetchAlumnos(params);
+    setAlumnos(res.alumnos);
+    setTotal(res.total);
+    setPages(res.pages);
+    setSeleccionados([]); // reset selección al recargar
   };
 
   const cargarContadores = async () => {
@@ -86,52 +76,64 @@ const Alumnos = () => {
   };
 
   const handleSave = async (alumno) => {
-    if (editData) {
-      await updateAlumno(editData.id, alumno);
-    } else {
-      await addAlumno(alumno);
+    try {
+      if (editData) {
+        await updateAlumno(editData.id, alumno);
+        toast.success("Alumno actualizado con éxito ✅");
+      } else {
+        await addAlumno(alumno);
+        toast.success("Alumno agregado con éxito 🎉");
+      }
+      setModalOpen(false);
+      setEditData(null);
+      cargarAlumnos();
+      cargarContadores();
+    } catch (error) {
+      console.error(error);
+      toast.error("❌ Error al guardar el alumno");
     }
-    setModalOpen(false);
-    setEditData(null);
-    cargarAlumnos();
-    cargarContadores();
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("¿Estás seguro de eliminar este alumno?")) {
-      await deleteAlumno(id);
-      cargarAlumnos();
-      cargarContadores();
+      try {
+        await deleteAlumno(id);
+        toast.success("Alumno eliminado correctamente 🗑️");
+        cargarAlumnos();
+        cargarContadores();
+      } catch (error) {
+        console.error(error);
+        toast.error("❌ Error al eliminar el alumno");
+      }
     }
   };
 
- const handleAccionMasiva = async (accion, valor) => {
-  try {
-    if (accion === "eliminar") {
-      await Promise.all(seleccionados.map((id) => deleteAlumno(id)));
-    } else if (accion === "profesor") {
-      // Asignar profesor: enviar SOLO profesor_asignado
-      await Promise.all(
-        seleccionados.map((id) => updateAlumno(id, { profesor_asignado: valor }))
-      );
-    } else {
-      // Otros casos: estado, estado_formacion, curso
-      await Promise.all(
-        seleccionados.map((id) => updateAlumno(id, { [accion]: valor }))
-      );
+  const handleAccionMasiva = async (accion, valor) => {
+    try {
+      if (accion === "eliminar") {
+        await Promise.all(seleccionados.map((id) => deleteAlumno(id)));
+        toast.success(`Se eliminaron ${seleccionados.length} alumnos 🗑️`);
+      } else if (accion === "profesor") {
+        await Promise.all(
+          seleccionados.map((id) => updateAlumno(id, { profesor_asignado: valor }))
+        );
+        toast.success(`Alumnos reasignados a otro profesor ✅`);
+      } else {
+        await Promise.all(
+          seleccionados.map((id) => updateAlumno(id, { [accion]: valor }))
+        );
+        toast.success(`Acción "${accion}" aplicada a ${seleccionados.length} alumnos ✅`);
+      }
+
+      await cargarAlumnos();
+      await cargarContadores();
+    } catch (error) {
+      console.error("Error aplicando acción masiva:", error);
+      toast.error("❌ Hubo un error al aplicar la acción masiva");
+    } finally {
+      setAccionMasivaOpen(false);
     }
-
-    // Refrescar datos
-    await cargarAlumnos();
-    await cargarContadores();
-  } catch (error) {
-    console.error("Error aplicando acción masiva:", error);
-    alert("Hubo un error al aplicar la acción masiva.");
-  } finally {
-    setAccionMasivaOpen(false);
-  }
-};
-
+  };
 
   const handleAnterior = () => {
     if (page > 1) setPage(page - 1);
@@ -141,33 +143,26 @@ const Alumnos = () => {
     if (page < pages) setPage(page + 1);
   };
 
-  const toggleSeleccionado = (id) => {
+  const toggleSeleccion = (id) => {
     setSeleccionados((prev) =>
-      prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
   const toggleSeleccionTodos = () => {
-    if (todosSeleccionadosEnPagina()) {
-      // desmarcar todos
+    if (seleccionados.length === alumnos.length) {
       setSeleccionados([]);
     } else {
-      // marcar todos los visibles en la página actual
-      const ids = alumnos.map((a) => a.id);
-      setSeleccionados(ids);
+      setSeleccionados(alumnos.map((a) => a.id));
     }
-  };
-
-  const todosSeleccionadosEnPagina = () => {
-    if (alumnos.length === 0) return false;
-    return alumnos.every((a) => seleccionados.includes(a.id));
   };
 
   return (
     <div className="p-6">
-      {/* 🔘 Botones toggle + Agregar + Acciones masivas */}
+      {/* Toaster global */}
+      <Toaster position="top-right" />
+
+      {/* 🔘 Botones toggle + Agregar */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-700">Alumnos</h1>
 
@@ -216,9 +211,9 @@ const Alumnos = () => {
           {seleccionados.length > 0 && (
             <button
               onClick={() => setAccionMasivaOpen(true)}
-              className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow"
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow"
             >
-              Acciones en masa ({seleccionados.length})
+              Acciones masivas ({seleccionados.length})
             </button>
           )}
         </div>
@@ -257,7 +252,7 @@ const Alumnos = () => {
             <th className="p-3 text-left">
               <input
                 type="checkbox"
-                checked={todosSeleccionadosEnPagina()}
+                checked={seleccionados.length === alumnos.length && alumnos.length > 0}
                 onChange={toggleSeleccionTodos}
               />
             </th>
@@ -267,52 +262,14 @@ const Alumnos = () => {
             <th className="p-3 text-left">Fecha Registro</th>
             <th className="p-3 text-left">Fecha Baja</th>
             <th className="p-3 text-left">Estado</th>
-            <th className="p-3 text-left">Estado Formación</th>
             <th className="p-3 text-left">Curso</th>
             <th className="p-3 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {loading ? (
-            // Skeleton loading
-            Array.from({ length: 5 }).map((_, index) => (
-              <tr key={index} className="animate-pulse border-b">
-                <td className="p-3">
-                  <div className="h-4 w-4 bg-gray-200 rounded" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-24" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-32" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-20" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-24" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-24" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-16" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-20" />
-                </td>
-                <td className="p-3">
-                  <div className="h-4 bg-gray-200 rounded w-24" />
-                </td>
-                <td className="p-3 flex justify-center gap-3">
-                  <div className="h-4 w-4 bg-gray-200 rounded-full" />
-                  <div className="h-4 w-4 bg-gray-200 rounded-full" />
-                </td>
-              </tr>
-            ))
-          ) : alumnos.length === 0 ? (
+          {alumnos.length === 0 ? (
             <tr>
-              <td colSpan="10" className="text-center p-3 text-gray-500">
+              <td colSpan="9" className="text-center p-3 text-gray-500">
                 No hay alumnos encontrados
               </td>
             </tr>
@@ -323,7 +280,7 @@ const Alumnos = () => {
                   <input
                     type="checkbox"
                     checked={seleccionados.includes(alumno.id)}
-                    onChange={() => toggleSeleccionado(alumno.id)}
+                    onChange={() => toggleSeleccion(alumno.id)}
                   />
                 </td>
                 <td className="p-3">{alumno.nombre}</td>
@@ -331,10 +288,7 @@ const Alumnos = () => {
                 <td className="p-3">{alumno.telefono || "N/A"}</td>
                 <td className="p-3">{formatDate(alumno.fecha_registro)}</td>
                 <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
-                <td className="p-3">{alumno.estado}</td>
-                <td className="p-3">
-                  {alumno.estado_formacion || "N/A"}
-                </td>
+                <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
                 <td className="p-3">
                   {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
                 </td>
@@ -361,8 +315,8 @@ const Alumnos = () => {
         </tbody>
       </table>
 
-      {/* Pie con paginación */}
-      {!loading && pages > 1 && (
+      {/* 🔄 Paginación */}
+      {pages > 1 && (
         <div className="mt-6 flex justify-center gap-4 items-center text-sm">
           <button
             onClick={handleAnterior}
@@ -372,7 +326,8 @@ const Alumnos = () => {
             ← Anterior
           </button>
           <span>
-            Página <strong>{page}</strong> de <strong>{pages}</strong>
+            Página <strong>{page}</strong> de <strong>{pages}</strong> — Resultados:{" "}
+            {alumnos.length}
           </span>
           <button
             onClick={handleSiguiente}

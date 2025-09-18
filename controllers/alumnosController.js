@@ -68,8 +68,8 @@ export const getAlumnos = async (req, res) => {
     }
 
     // Paginación
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const offset = (page - 1) * limit;
 
     const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -119,7 +119,7 @@ export const getAlumnos = async (req, res) => {
   }
 };
 
-/** ✅ Actualizar alumno */
+/** ✅ Actualizar alumno (permite a profesores reasignar profesor_asignado) */
 export const updateAlumno = async (req, res) => {
   try {
     const { id } = req.params;
@@ -128,21 +128,50 @@ export const updateAlumno = async (req, res) => {
       return res.status(400).json({ message: "No se recibieron datos para actualizar." });
     }
 
-    if (req.userRole === "profesor") {
+    // ⚖️ Regla de permisos:
+    // - Si el usuario es PROFESOR, solo puede modificar a sus propios alumnos,
+    //   excepto cuando la ÚNICA modificación es reasignar el profesor (profesor_asignado).
+    const isProfesor = req.userRole === "profesor";
+    const onlyReassignProfesor =
+      isProfesor &&
+      Object.keys(req.body).length === 1 &&
+      Object.prototype.hasOwnProperty.call(req.body, "profesor_asignado");
+
+    if (isProfesor && !onlyReassignProfesor) {
       const [[own]] = await pool.query(
         "SELECT id FROM usuarios WHERE id=? AND profesor_asignado=? AND rol='estudiante' LIMIT 1",
         [id, req.userId]
       );
-      if (!own) return res.status(403).json({ message: "No puedes modificar alumnos de otro profesor." });
+      if (!own) {
+        return res.status(403).json({ message: "No puedes modificar alumnos de otro profesor." });
+      }
     }
 
     const payload = { ...req.body };
+
+    // Resolución de curso (si llega curso/curso_id)
     if (payload.curso || payload.curso_id) {
       const resolved = await resolveCursoId(pool, { curso_id: payload.curso_id, curso_nombre: payload.curso });
       payload.curso_id = resolved;
       delete payload.curso;
     }
 
+    // 🔎 Validar profesor_asignado si se envía (que exista y sea profesor activo)
+    if (Object.prototype.hasOwnProperty.call(payload, "profesor_asignado")) {
+      const newProfId = payload.profesor_asignado;
+      if (!newProfId) {
+        return res.status(400).json({ message: "profesor_asignado es requerido." });
+      }
+      const [[prof]] = await pool.query(
+        "SELECT id FROM usuarios WHERE id=? AND rol='profesor' AND estado='activo' LIMIT 1",
+        [newProfId]
+      );
+      if (!prof) {
+        return res.status(400).json({ message: "El profesor asignado no existe o no está activo." });
+      }
+    }
+
+    // Campos permitidos
     const allowed = new Set([
       "nombre", "apellidos", "telefono", "email", "password",
       "profesor_asignado", "curso_id", "estado_formacion", "observaciones", "estado"
@@ -151,6 +180,7 @@ export const updateAlumno = async (req, res) => {
     const fields = [];
     const params = [];
 
+    // Evitar duplicado de email si lo cambian
     if (payload.email) {
       const [dup] = await pool.query("SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1", [payload.email, id]);
       if (dup.length) return res.status(409).json({ message: "El email ya está en uso." });
@@ -212,6 +242,7 @@ export const deleteAlumno = async (req, res) => {
     res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
 /** 📊 Contadores globales de alumnos */
 export const getAlumnosStats = async (req, res) => {
   try {
@@ -228,18 +259,16 @@ export const getAlumnosStats = async (req, res) => {
     // Mis alumnos (solo si es profesor)
     let misAlumnos = 0;
     if (userRole === "profesor") {
-      const [[{ total }]] = await pool.query(`
-        SELECT COUNT(*) AS total 
-        FROM usuarios 
-        WHERE rol = 'estudiante' AND estado = 'activo' AND profesor_asignado = ?
-      `, [userId]);
+      const [[{ total }]] = await pool.query(
+        `SELECT COUNT(*) AS total 
+         FROM usuarios 
+         WHERE rol = 'estudiante' AND estado = 'activo' AND profesor_asignado = ?`,
+        [userId]
+      );
       misAlumnos = total;
     }
 
-    res.json({
-      totalAlumnos,
-      misAlumnos,
-    });
+    res.json({ totalAlumnos, misAlumnos });
   } catch (error) {
     console.error("❌ Error en getAlumnosStats:", error);
     res.status(500).json({ message: "Error obteniendo estadísticas de alumnos" });

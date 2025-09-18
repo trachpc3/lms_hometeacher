@@ -5,13 +5,21 @@ import pool from "../models/db.js";
    Helpers internos
 ========================= */
 
-const ROLES = new Set(["estudiante", "profesor", "administrador"]);
+const ROLES = new Set(["estudiante", "profesor"]);
+
+function normalizeRole(role) {
+  if (!role) return null;
+  const r = String(role).toLowerCase();
+  if (r === "administrador" || r === "admin") return "profesor";
+  if (r === "alumno") return "estudiante";
+  return r;
+}
 
 async function getAssignedProfessorId(conn, studentId) {
   const [[row]] = await conn.query(
     `SELECT profesor_asignado AS profesorId
      FROM usuarios
-     WHERE id = ? AND rol = 'estudiante' AND estado <> 'inactivo'
+     WHERE id = ? AND rol IN ('estudiante','alumno') AND estado <> 'inactivo'
      LIMIT 1`,
     [studentId]
   );
@@ -19,14 +27,17 @@ async function getAssignedProfessorId(conn, studentId) {
 }
 
 async function userExists(conn, userId, role) {
-  if (!ROLES.has(role)) return null;
+  const norm = normalizeRole(role);
+  if (!ROLES.has(norm)) return null;
   const [[u]] = await conn.query(
     `SELECT id, nombre, imagen, rol, estado
      FROM usuarios
-     WHERE id = ? AND rol = ? LIMIT 1`,
-    [userId, role]
+     WHERE id = ? AND rol IN ('estudiante','alumno','profesor','administrador')
+     LIMIT 1`,
+    [userId]
   );
-  return u || null;
+  if (!u) return null;
+  return { ...u, rol: normalizeRole(u.rol) };
 }
 
 async function findExistingConversation(conn, aId, aRole, bId, bRole) {
@@ -46,7 +57,7 @@ async function findExistingConversation(conn, aId, aRole, bId, bRole) {
 
 async function getPeerInfoBulk(conn, myId, myRole, convIds) {
   if (!convIds.length) return {};
-  // Participantes de esas conversaciones
+
   const [parts] = await conn.query(
     `SELECT conversation_id, user_id, user_role
      FROM conversation_participants
@@ -55,20 +66,15 @@ async function getPeerInfoBulk(conn, myId, myRole, convIds) {
   );
 
   const mapPeer = new Map();
-  const idsByRole = { estudiante: new Set(), profesor: new Set(), administrador: new Set() };
+  const idsByRole = { estudiante: new Set(), profesor: new Set() };
 
   for (const p of parts) {
     if (p.user_id === myId && p.user_role === myRole) continue;
-    mapPeer.set(p.conversation_id, { id: p.user_id, role: p.user_role });
-    idsByRole[p.user_role]?.add(p.user_id);
+    mapPeer.set(p.conversation_id, { id: p.user_id, role: normalizeRole(p.user_role) });
+    idsByRole[normalizeRole(p.user_role)]?.add(p.user_id);
   }
 
-  // Traemos nombres/imagenes de una sola vez
-  const allIds = [
-    ...idsByRole.estudiante,
-    ...idsByRole.profesor,
-    ...idsByRole.administrador,
-  ];
+  const allIds = [...idsByRole.estudiante, ...idsByRole.profesor];
   if (!allIds.length) return {};
 
   const [rows] = await conn.query(
@@ -78,7 +84,7 @@ async function getPeerInfoBulk(conn, myId, myRole, convIds) {
     [allIds]
   );
 
-  const byKey = new Map(rows.map(r => [`${r.rol}:${r.id}`, r]));
+  const byKey = new Map(rows.map(r => [`${normalizeRole(r.rol)}:${r.id}`, r]));
 
   const out = {};
   for (const [cid, peer] of mapPeer.entries()) {
@@ -100,14 +106,13 @@ async function getPeerInfoBulk(conn, myId, myRole, convIds) {
 
 /**
  * POST /api/mensajes/start
- * - Alumno: inicia/recupera conversación 1–1 con su profesor_asignado
- * - Profesor/Admin: inicia/recupera conversación con cualquier usuario (toUserId, toRole)
  */
 export const startConversation = async (req, res) => {
   const myId = req.userId;
-  const myRole = req.userRole;
+  const myRole = normalizeRole(req.userRole);
 
-  const { toUserId, toRole = "estudiante" } = req.body || {};
+  const { toUserId, toRole: rawToRole = "estudiante" } = req.body || {};
+  const toRole = normalizeRole(rawToRole);
 
   const conn = await pool.getConnection();
   try {
@@ -117,7 +122,6 @@ export const startConversation = async (req, res) => {
     let otherRole = null;
 
     if (myRole === "estudiante") {
-      // Fuerza 1–1 con el profesor asignado
       const profesorId = await getAssignedProfessorId(conn, myId);
       if (!profesorId) {
         await conn.rollback(); conn.release();
@@ -125,7 +129,7 @@ export const startConversation = async (req, res) => {
       }
       otherId = profesorId;
       otherRole = "profesor";
-    } else if (myRole === "profesor" || myRole === "administrador") {
+    } else if (myRole === "profesor") {
       if (!toUserId) {
         await conn.rollback(); conn.release();
         return res.status(400).json({ message: "toUserId es obligatorio." });
@@ -141,21 +145,19 @@ export const startConversation = async (req, res) => {
       return res.status(403).json({ message: "Rol no permitido." });
     }
 
-    // Validar usuario destino
     const other = await userExists(conn, otherId, otherRole);
     if (!other || other.estado === "inactivo") {
       await conn.rollback(); conn.release();
       return res.status(404).json({ message: "Destinatario no encontrado o inactivo." });
     }
+    otherRole = other.rol; // normalizado
 
-    // ¿Existe ya la conversación 1–1?
     const existingId = await findExistingConversation(conn, myId, myRole, otherId, otherRole);
     if (existingId) {
       await conn.commit(); conn.release();
       return res.json({ conversationId: existingId, created: false });
     }
 
-    // Crear conversación y participantes
     const [ins] = await conn.query(
       `INSERT INTO conversations (type) VALUES ('one_to_one')`
     );
@@ -164,6 +166,7 @@ export const startConversation = async (req, res) => {
     await conn.query(
       `INSERT INTO conversation_participants (conversation_id, user_id, user_role)
        VALUES (?, ?, ?), (?, ?, ?)`,
+
       [conversationId, myId, myRole, conversationId, otherId, otherRole]
     );
 
@@ -178,11 +181,10 @@ export const startConversation = async (req, res) => {
 
 /**
  * GET /api/mensajes
- * Lista de conversaciones del usuario, con preview, peer y no leídos
  */
 export const listConversations = async (req, res) => {
   const myId = req.userId;
-  const myRole = req.userRole;
+  const myRole = normalizeRole(req.userRole);
 
   const conn = await pool.getConnection();
   try {
@@ -198,7 +200,6 @@ export const listConversations = async (req, res) => {
     const convIds = rows.map(r => r.id);
     const peerMap = await getPeerInfoBulk(conn, myId, myRole, convIds);
 
-    // Último mensaje por conversación
     let lastByConv = {};
     if (convIds.length) {
       const [last] = await conn.query(
@@ -215,7 +216,6 @@ export const listConversations = async (req, res) => {
       for (const m of last) lastByConv[m.conversation_id] = m;
     }
 
-    // No leídos por conversación (excluyendo mis propios mensajes)
     let unreadByConv = {};
     if (convIds.length) {
       const [unr] = await conn.query(
@@ -243,7 +243,7 @@ export const listConversations = async (req, res) => {
             id: lastByConv[r.id].id,
             body: lastByConv[r.id].body,
             senderId: lastByConv[r.id].sender_id,
-            senderRole: lastByConv[r.id].sender_role,
+            senderRole: normalizeRole(lastByConv[r.id].sender_role),
             createdAt: lastByConv[r.id].created_at,
           }
         : null,
@@ -260,17 +260,15 @@ export const listConversations = async (req, res) => {
 
 /**
  * GET /api/mensajes/:conversationId
- * Trae mensajes (paginado por beforeId/limit), valida participación
  */
 export const getMessages = async (req, res) => {
   const myId = req.userId;
-  const myRole = req.userRole;
+  const myRole = normalizeRole(req.userRole);
   const { conversationId } = req.params;
   const { beforeId, limit = 50 } = req.query;
 
   const conn = await pool.getConnection();
   try {
-    // Debo ser participante
     const [[me]] = await conn.query(
       `SELECT 1
        FROM conversation_participants
@@ -296,7 +294,8 @@ export const getMessages = async (req, res) => {
     args.push(Math.min(200, Number(limit)));
 
     const [rows] = await conn.query(sql, args);
-    rows.reverse(); // cronológico ascendente
+    rows.forEach(m => { m.senderRole = normalizeRole(m.senderRole); });
+    rows.reverse();
 
     conn.release();
     return res.json({ messages: rows });
@@ -309,11 +308,10 @@ export const getMessages = async (req, res) => {
 
 /**
  * POST /api/mensajes/:conversationId
- * Enviar mensaje (valida participación), actualiza last_message_at y mi last_read
  */
 export const sendMessage = async (req, res) => {
   const myId = req.userId;
-  const myRole = req.userRole;
+  const myRole = normalizeRole(req.userRole);
   const { conversationId } = req.params;
   const { body } = req.body || {};
 
@@ -325,7 +323,6 @@ export const sendMessage = async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // Debo ser participante
     const [[me]] = await conn.query(
       `SELECT 1
        FROM conversation_participants
@@ -353,7 +350,6 @@ export const sendMessage = async (req, res) => {
       [conversationId]
     );
 
-    // Al enviar, marco como leído hasta este mensaje para mí
     await conn.query(
       `UPDATE conversation_participants
        SET last_read_message_id = GREATEST(COALESCE(last_read_message_id, 0), ?)
@@ -379,11 +375,10 @@ export const sendMessage = async (req, res) => {
 
 /**
  * POST /api/mensajes/:conversationId/read
- * Marca todos los mensajes como leídos para el usuario actual
  */
 export const markRead = async (req, res) => {
   const myId = req.userId;
-  const myRole = req.userRole;
+  const myRole = normalizeRole(req.userRole);
   const { conversationId } = req.params;
 
   const conn = await pool.getConnection();
@@ -414,11 +409,10 @@ export const markRead = async (req, res) => {
 
 /**
  * GET /api/mensajes/unread-count
- * Total de mensajes no leídos (para badge en header)
  */
 export const getUnreadCount = async (req, res) => {
   const myId = req.userId;
-  const myRole = req.userRole;
+  const myRole = normalizeRole(req.userRole);
 
   const conn = await pool.getConnection();
   try {

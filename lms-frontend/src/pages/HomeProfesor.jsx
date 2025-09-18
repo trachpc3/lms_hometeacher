@@ -221,51 +221,48 @@ const DashboardProfesor = () => {
                 </div>
               )}
 
-              {/* Tarjetas de KPIs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {loading ? (
-                  <>
-                    <SkeletonCard icon={<Users className="text-blue-400" size={32} />} />
-                    <SkeletonCard icon={<ClipboardList className="text-green-400" size={32} />} />
-                    <SkeletonCard icon={<BarChart2 className="text-purple-400" size={32} />} />
-                  </>
-                ) : (
-                  <>
-                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
-                        <Users size={24} />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
-                        <p className="text-gray-600 text-sm">Alumnos Asignados</p>
-                      </div>
-                    </div>
+             {/* Tarjetas de KPIs */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  {loading ? (
+    <>
+      <SkeletonCard icon={<Users className="text-blue-400" size={32} />} />
+      <SkeletonCard icon={<ClipboardList className="text-green-400" size={32} />} />
+      <SkeletonCard icon={<RefreshCw className="text-orange-400" size={32} />} />
+    </>
+  ) : (
+    <>
+      {/* 👥 Alumnos */}
+      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+        <Users className="text-blue-500" size={32} />
+        <div>
+          <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
+          <p className="text-gray-600 text-sm">Alumnos Asignados</p>
+        </div>
+      </div>
 
-                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-                        <ClipboardList size={24} />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
-                        <p className="text-gray-600 text-sm">Actividades Pendientes</p>
-                      </div>
-                    </div>
+      {/* 📋 Actividades */}
+      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+        <ClipboardList className="text-emerald-500" size={32} />
+        <div>
+          <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
+          <p className="text-gray-600 text-sm">Actividades Pendientes</p>
+        </div>
+      </div>
 
-                    {/* 🔄 Card de Renovaciones (sustituye Progreso Promedio) */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
-                        <BarChart2 size={24} />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold leading-tight">
-                          {stats.renovaciones ?? 0}
-                        </h2>
-                        <p className="text-gray-600 text-sm">Renovaciones</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+      {/* 🔄 Renovaciones */}
+      <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+        <RefreshCw className="text-orange-500" size={32} />
+        <div>
+          <h2 className="text-2xl font-bold leading-tight">
+            {stats.renovaciones ?? 0}
+          </h2>
+          <p className="text-gray-600 text-sm">Renovaciones</p>
+        </div>
+      </div>
+    </>
+  )}
+</div>
+
 
               {/* Gráficas */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">

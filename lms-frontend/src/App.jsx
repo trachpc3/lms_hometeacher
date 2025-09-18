@@ -1,6 +1,6 @@
 // src/App.jsx
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { UserProvider } from "./context/UserContext"; // ✅ Importa el contexto
+import { UserProvider } from "./context/UserContext";
 
 // Páginas
 import DashboardProfesor from "./pages/HomeProfesor";
@@ -25,16 +25,16 @@ import HomeFundae from "./pages/HomeFundae";
 import FundaeUsers from "./pages/FundaeUsers";
 import ProductiveSkillsPage from "./pages/ProductiveSkills";
 
-// 🆕 Recuperación de contraseña
+// Recuperación de contraseña
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
 import FundaePage from "./pages/FundaePage";
 
-// 🆕 Mensajes (chat)
+// Mensajes (chat)
 import Mensajes from "./pages/Mensajes";
 
-// 🆕 Notificaciones (placeholder por ahora)
+// Notificaciones (placeholder)
 const Notificaciones = () => (
   <div className="p-6 text-center">
     <h1 className="text-2xl font-bold mb-2">🔔 Notificaciones</h1>
@@ -52,25 +52,22 @@ const router = createBrowserRouter(
     { path: "/test-nivel", element: <TestNivel /> },
     { path: "/perfil", element: <ProfilePage /> },
 
-    // 🆕 Rutas globales
-    { path: "/mensajes", element: <Mensajes /> },
+    // Rutas globales
+    { path: "/mensajes", element: <Mensajes /> },          // Alumno (top-level)
     { path: "/notificaciones", element: <Notificaciones /> },
 
+    // Profesor (layout con sidebar + header)
     {
       path: "/dashboard-profesor",
       element: <DashboardProfesor />,
       children: [
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
-        // (si prefieres: { path: "mensajes", element: <Mensajes /> })
+        { path: "mensajes", element: <Mensajes /> },       // Profesor (hereda layout)
       ],
     },
 
-    // 🆕 Recuperación de contraseña
-    { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
-    { path: "/restablecer-contraseña", element: <ResetPassword /> },
-    { path: "/register", element: <Register /> },
-
+    // Fundae
     {
       path: "/fundae",
       element: <HomeFundae />,
@@ -78,9 +75,12 @@ const router = createBrowserRouter(
         { index: true, element: <FundaePage /> },
         { path: "envios", element: <FundaeList /> },
         { path: "usuarios", element: <FundaeUsers /> },
+        // Si quieres mensajes dentro de Fundae más adelante:
+        // { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
+    // Unidades/actividades
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },

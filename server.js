@@ -30,6 +30,7 @@ import actividadesRoutes from "./routes/actividadesRoutes.js";
 import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
 import testnivelRoutes from "./routes/testnivelRoutes.js";
 import profesoresRoutes from "./routes/profesoresRoutes.js";
+import mensajesRoutes from "./routes/mensajesRoutes.js";
 
 
 // __dirname para ES modules
@@ -98,6 +99,7 @@ app.use("/api/actividades", verifyToken, actividadesRoutes);
 app.use("/api/productive-skills", verifyToken, productiveSkillsRoutes);
 app.use("/api/testnivel", verifyToken, testnivelRoutes);
 app.use("/api/profesores", verifyToken, profesoresRoutes);
+app.use("/api/mensajes", verifyToken, mensajesRoutes); 
 
 
 // Error handler genérico

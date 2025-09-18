@@ -1,7 +1,8 @@
+// src/App.jsx
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { UserProvider } from "./context/UserContext"; // ✅ Importa el contexto
 
-// Importa las páginas de tu aplicación
+// Páginas
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
@@ -30,6 +31,19 @@ import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
 import FundaePage from "./pages/FundaePage";
 
+// 🆕 Mensajes (chat)
+import Mensajes from "./pages/Mensajes";
+
+// 🆕 Notificaciones (placeholder por ahora)
+const Notificaciones = () => (
+  <div className="p-6 text-center">
+    <h1 className="text-2xl font-bold mb-2">🔔 Notificaciones</h1>
+    <p className="text-gray-600">
+      Aquí aparecerán las notificaciones del sistema (en desarrollo).
+    </p>
+  </div>
+);
+
 const router = createBrowserRouter(
   [
     { path: "/", element: <Login /> },
@@ -37,27 +51,36 @@ const router = createBrowserRouter(
     { path: "/pricing", element: <Pricing /> },
     { path: "/test-nivel", element: <TestNivel /> },
     { path: "/perfil", element: <ProfilePage /> },
+
+    // 🆕 Rutas globales
+    { path: "/mensajes", element: <Mensajes /> },
+    { path: "/notificaciones", element: <Notificaciones /> },
+
     {
       path: "/dashboard-profesor",
       element: <DashboardProfesor />,
       children: [
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
+        // (si prefieres: { path: "mensajes", element: <Mensajes /> })
       ],
     },
-    // 🆕 Rutas para recuperación de contraseña
+
+    // 🆕 Recuperación de contraseña
     { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
     { path: "/restablecer-contraseña", element: <ResetPassword /> },
     { path: "/register", element: <Register /> },
+
     {
       path: "/fundae",
       element: <HomeFundae />,
       children: [
-        { index: true, element: <FundaePage /> },        // 👉 Muestra el formulario al acceder a /fundae
-        { path: "envios", element: <FundaeList /> },      // 👉 Muestra el listado en /fundae/envios
-        { path: "usuarios", element: <FundaeUsers /> }
+        { index: true, element: <FundaePage /> },
+        { path: "envios", element: <FundaeList /> },
+        { path: "usuarios", element: <FundaeUsers /> },
       ],
     },
+
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },
@@ -68,7 +91,18 @@ const router = createBrowserRouter(
     { path: "/unidad/:unitId/assessment", element: <Assessment /> },
     { path: "/unidad/:unitId/speaking", element: <CharacterSelection /> },
     { path: "/speaking/:actividadId", element: <CharacterSelection /> },
-    { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> }
+    { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> },
+
+    // 404
+    {
+      path: "*",
+      element: (
+        <div className="p-6 text-center">
+          <h1 className="text-2xl font-bold mb-2">404</h1>
+          <p className="text-gray-600">Página no encontrada</p>
+        </div>
+      ),
+    },
   ],
   {
     future: {

@@ -225,15 +225,15 @@ const DashboardProfesor = () => {
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   {loading ? (
     <>
-      <SkeletonCard icon={<Users className="text-blue-400" size={32} />} />
-      <SkeletonCard icon={<ClipboardList className="text-green-400" size={32} />} />
-      <SkeletonCard icon={<RefreshCw className="text-orange-400" size={32} />} />
+      <SkeletonCard icon={<Users color="#3B82F6" size={32} />} />        {/* blue-500 */}
+      <SkeletonCard icon={<ClipboardList color="#10B981" size={32} />} /> {/* emerald-500 */}
+      <SkeletonCard icon={<RefreshCw color="#F59E0B" size={32} />} />     {/* orange-500 */}
     </>
   ) : (
     <>
       {/* 👥 Alumnos */}
       <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <Users className="text-blue-500" size={32} />
+        <Users color="#3B82F6" size={32} />
         <div>
           <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
           <p className="text-gray-600 text-sm">Alumnos Asignados</p>
@@ -242,7 +242,7 @@ const DashboardProfesor = () => {
 
       {/* 📋 Actividades */}
       <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <ClipboardList className="text-emerald-500" size={32} />
+        <ClipboardList color="#10B981" size={32} />
         <div>
           <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
           <p className="text-gray-600 text-sm">Actividades Pendientes</p>
@@ -251,11 +251,9 @@ const DashboardProfesor = () => {
 
       {/* 🔄 Renovaciones */}
       <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-        <RefreshCw className="text-orange-500" size={32} />
+        <RefreshCw color="#F59E0B" size={32} />
         <div>
-          <h2 className="text-2xl font-bold leading-tight">
-            {stats.renovaciones ?? 0}
-          </h2>
+          <h2 className="text-2xl font-bold leading-tight">{stats.renovaciones ?? 0}</h2>
           <p className="text-gray-600 text-sm">Renovaciones</p>
         </div>
       </div>

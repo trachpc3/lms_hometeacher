@@ -34,7 +34,7 @@ export const addAlumno = async (req, res) => {
     return res.status(201).json({ message: "Alumno agregado correctamente", id: result.insertId });
   } catch (error) {
     console.error("💥 Error al agregar alumno:", error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res.status(500).json({ message: error?.sqlMessage || "Error interno del servidor" });
   }
 };
 
@@ -115,7 +115,7 @@ export const getAlumnos = async (req, res) => {
     return res.json({ alumnos: rows, total, page, pages });
   } catch (error) {
     console.error("💥 Error al obtener alumnos:", error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res.status(500).json({ message: error?.sqlMessage || "Error interno del servidor" });
   }
 };
 
@@ -152,11 +152,52 @@ export const updateAlumno = async (req, res) => {
     }
 
     const isProfesor = req.userRole === "profesor";
-    const isAdmin = req.userRole === "admin";
+    // 🛠️ FIX: en DB el rol es 'administrador'
+    const isAdmin = req.userRole === "administrador";
+
+    // 🧭 Resolver curso si llega curso/curso_id (en payload ya solo puede venir curso_id)
+    if (Object.prototype.hasOwnProperty.call(payload, "curso") || Object.prototype.hasOwnProperty.call(payload, "curso_id")) {
+      const resolved = await resolveCursoId(pool, { curso_id: payload.curso_id, curso_nombre: payload.curso });
+      payload.curso_id = resolved;
+      delete payload.curso;
+    }
+
+    // ✅ Normalizar/validar estado (mapear "pausado" -> "suspendido")
+    if (Object.prototype.hasOwnProperty.call(payload, "estado")) {
+      const mapEstado = { pausado: "suspendido" }; // compatibilidad con frontend/otros clientes
+      const normalized = mapEstado[payload.estado] ?? payload.estado;
+      const allowedEstados = new Set(["activo", "inactivo", "suspendido"]);
+      if (!allowedEstados.has(normalized)) {
+        return res.status(400).json({ message: "estado inválido" });
+      }
+      payload.estado = normalized;
+    }
+
+    // ✅ Validar profesor_asignado si se envía
+    if (Object.prototype.hasOwnProperty.call(payload, "profesor_asignado")) {
+      const newProfId = payload.profesor_asignado;
+      if (!newProfId) {
+        return res.status(400).json({ message: "profesor_asignado es requerido." });
+      }
+      const [[prof]] = await pool.query(
+        "SELECT id FROM usuarios WHERE id=? AND rol='profesor' AND estado='activo' LIMIT 1",
+        [newProfId]
+      );
+      if (!prof) {
+        return res.status(400).json({ message: "El profesor asignado no existe o no está activo." });
+      }
+    }
+
+    // 🚫 Evitar duplicado de email si lo cambian
+    if (payload.email) {
+      const [dup] = await pool.query("SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1", [payload.email, id]);
+      if (dup.length) return res.status(409).json({ message: "El email ya está en uso." });
+    }
 
     // 🛡️ Permisos:
-    // - admin: bypass total
-    // - profesor: solo puede modificar a sus alumnos, EXCEPTO cuando el ÚNICO campo es profesor_asignado (reasignación)
+    // - administrador: bypass total
+    // - profesor: solo puede modificar a sus alumnos,
+    //   EXCEPTO cuando el ÚNICO campo es profesor_asignado (reasignación controlada)
     if (!isAdmin) {
       const onlyReassignProfesor =
         isProfesor &&
@@ -174,35 +215,7 @@ export const updateAlumno = async (req, res) => {
       }
     }
 
-    // Resolver curso si llega curso/curso_id (en payload ya solo puede venir curso_id)
-    if (Object.prototype.hasOwnProperty.call(payload, "curso") || Object.prototype.hasOwnProperty.call(payload, "curso_id")) {
-      const resolved = await resolveCursoId(pool, { curso_id: payload.curso_id, curso_nombre: payload.curso });
-      payload.curso_id = resolved;
-      delete payload.curso;
-    }
-
-    // Validar profesor_asignado si se envía
-    if (Object.prototype.hasOwnProperty.call(payload, "profesor_asignado")) {
-      const newProfId = payload.profesor_asignado;
-      if (!newProfId) {
-        return res.status(400).json({ message: "profesor_asignado es requerido." });
-      }
-      const [[prof]] = await pool.query(
-        "SELECT id FROM usuarios WHERE id=? AND rol='profesor' AND estado='activo' LIMIT 1",
-        [newProfId]
-      );
-      if (!prof) {
-        return res.status(400).json({ message: "El profesor asignado no existe o no está activo." });
-      }
-    }
-
-    // Evitar duplicado de email si lo cambian
-    if (payload.email) {
-      const [dup] = await pool.query("SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1", [payload.email, id]);
-      if (dup.length) return res.status(409).json({ message: "El email ya está en uso." });
-    }
-
-    // Construir UPDATE
+    // 🔨 Construir UPDATE
     const fields = [];
     const params = [];
 
@@ -230,7 +243,7 @@ export const updateAlumno = async (req, res) => {
     res.json({ message: "Alumno actualizado correctamente." });
   } catch (error) {
     console.error("💥 Error al actualizar alumno:", error);
-    res.status(500).json({ message: "Error interno del servidor." });
+    res.status(500).json({ message: error?.sqlMessage || error?.message || "Error interno del servidor." });
   }
 };
 
@@ -258,7 +271,7 @@ export const deleteAlumno = async (req, res) => {
     res.json({ message: "Alumno desactivado correctamente." });
   } catch (error) {
     console.error("💥 Error al desactivar alumno:", error);
-    res.status(500).json({ message: "Error interno del servidor." });
+    res.status(500).json({ message: error?.sqlMessage || "Error interno del servidor." });
   }
 };
 
@@ -288,6 +301,6 @@ export const getAlumnosStats = async (req, res) => {
     res.json({ totalAlumnos, misAlumnos });
   } catch (error) {
     console.error("❌ Error en getAlumnosStats:", error);
-    res.status(500).json({ message: "Error obteniendo estadísticas de alumnos" });
+    res.status(500).json({ message: error?.sqlMessage || "Error obteniendo estadísticas de alumnos" });
   }
 };

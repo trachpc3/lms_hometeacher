@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { verifyToken } from "./middlewares/authMiddleware.js";
+import { verifyToken, logAuth } from "./middlewares/authMiddleware.js";
 
 // Rutas
 import authRoutes from "./routes/authRoutes.js";
@@ -99,7 +99,7 @@ app.use("/api/actividades", verifyToken, actividadesRoutes);
 app.use("/api/productive-skills", verifyToken, productiveSkillsRoutes);
 app.use("/api/testnivel", verifyToken, testnivelRoutes);
 app.use("/api/profesores", verifyToken, profesoresRoutes);
-app.use("/api/mensajes", verifyToken, mensajesRoutes); 
+app.use("/api/mensajes", verifyToken, logAuth, mensajesRoutes); 
 
 
 // Error handler genérico

@@ -7,10 +7,10 @@ import {
   getMessages,
   sendMessage,
   markRead,
-} from "../services/mensajesService";
-import { useUser } from "../context/UserContext";
-import { getAvatarUrl } from "../utils/getAvatarUrl";
-import NewConversationModal from "../components/NewConversationModal";
+} from "@/services/mensajesService";
+import { useUser } from "@/context/UserContext";
+import { getAvatarUrl } from "@/utils/getAvatarUrl";
+import NewConversationModal from "@/components/NewConversationModal";
 
 function PeerAvatar({ peer }) {
   const src = getAvatarUrl(peer?.imagen);
@@ -27,6 +27,7 @@ export default function Mensajes() {
   const [active, setActive] = useState(null); // conversación activa
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState("");
+  const [q, setQ] = useState("");
   const [loadingList, setLoadingList] = useState(true);
   const [loadingChat, setLoadingChat] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -37,10 +38,12 @@ export default function Mensajes() {
 
   // Cargar lista de conversaciones al entrar
   useEffect(() => {
+    const abort = new AbortController();
     (async () => {
       setLoadingList(true);
       try {
         const { conversations } = await listConversations();
+        if (abort.signal.aborted) return;
         setConvs(conversations);
 
         if (conversations.length) {
@@ -48,19 +51,21 @@ export default function Mensajes() {
         } else if (isAlumno) {
           // Alumno: si no tiene convs, iniciamos con su profesor asignado
           const { conversationId } = await startConversation();
+          if (abort.signal.aborted) return;
           const again = await listConversations();
-          const found =
-            again.conversations.find((c) => c.id === conversationId) ||
-            again.conversations[0];
+          if (abort.signal.aborted) return;
+          const found = again.conversations.find((c) => c.id === conversationId) || again.conversations[0];
           setConvs(again.conversations);
           setActive(found || null);
         }
       } catch (e) {
+        // silenciamos errores 401 (redirige en SafeFetch si lo configuraste)
         console.error(e);
       } finally {
-        setLoadingList(false);
+        if (!abort.signal.aborted) setLoadingList(false);
       }
     })();
+    return () => abort.abort();
   }, [isAlumno]);
 
   // Cargar mensajes cuando cambia la conversación
@@ -69,12 +74,15 @@ export default function Mensajes() {
       setMsgs([]);
       return;
     }
+    const abort = new AbortController();
     (async () => {
       setLoadingChat(true);
       try {
         const { messages } = await getMessages(active.id);
+        if (abort.signal.aborted) return;
         setMsgs(messages);
         await markRead(active.id); // marcar como leídos
+        if (abort.signal.aborted) return;
         // refrescar conteo no leídos de esa conv en la lista
         setConvs((prev) =>
           prev.map((c) => (c.id === active.id ? { ...c, unread: 0 } : c))
@@ -84,9 +92,10 @@ export default function Mensajes() {
       } catch (e) {
         console.error(e);
       } finally {
-        setLoadingChat(false);
+        if (!abort.signal.aborted) setLoadingChat(false);
       }
     })();
+    return () => abort.abort();
   }, [active?.id]);
 
   // Nueva conversación (alumno: directa con su profe; profe: abre modal)
@@ -127,15 +136,35 @@ export default function Mensajes() {
     if (!body || !active) return;
     try {
       const msg = await sendMessage(active.id, body);
+      // añade al hilo
       setMsgs((prev) => [...prev, msg]);
       setText("");
+      // refresca preview en la lista (último mensaje + orden si quieres)
+      setConvs((prev) =>
+        prev
+          .map((c) =>
+            c.id === active.id
+              ? { ...c, lastMessage: { ...msg }, unread: 0, lastMessageAt: msg.createdAt }
+              : c
+          )
+          .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0))
+      );
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const filteredConvs = useMemo(() => convs, [convs]);
+  // Filtro local por nombre del peer o texto del último mensaje
+  const filteredConvs = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return convs;
+    return convs.filter((c) => {
+      const nombre = (c.peer?.nombre || "").toLowerCase();
+      const last = (c.lastMessage?.body || "").toLowerCase();
+      return nombre.includes(term) || last.includes(term);
+    });
+  }, [q, convs]);
 
   return (
     <div className="h-full grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -155,9 +184,10 @@ export default function Mensajes() {
         <div className="relative mb-3">
           <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
           <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-lg border"
             placeholder="Buscar conversaciones"
-            // TODO: implementar filtro local o en servidor
           />
         </div>
 

@@ -183,12 +183,7 @@ const DashboardProfesor = () => {
               <div className="flex items-start justify-between mb-6 gap-3">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">Panel de Control</h1>
-                  <p className="text-sm text-gray-500">
-                    Bienvenido, {user?.nombre || "profesor"} ·{" "}
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" /> Activo
-                    </span>
-                  </p>
+                  
                 </div>
                 <div className="flex items-center gap-2">
                   <button

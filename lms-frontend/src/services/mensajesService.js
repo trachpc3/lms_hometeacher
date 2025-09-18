@@ -1,82 +1,26 @@
 // src/services/mensajesService.js
+import { api } from "@/lib/api";
 
-const BASE = "/api/mensajes";
+const BASE = "/mensajes"; // 👈 OJO: api.js ya antepone API_BASE_URL (que incluye /api)
 
-export async function startConversation(payload = {}) {
-  const res = await fetch(`${BASE}/start`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "No se pudo iniciar la conversación");
-  }
-  // { conversationId, created }
-  return res.json();
-}
+export const startConversation = (payload = {}) =>
+  api.post(`${BASE}/start`, payload);
 
-export async function listConversations() {
-  const res = await fetch(`${BASE}`, { credentials: "include" });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "No se pudieron cargar las conversaciones");
-  }
-  // { conversations: [...] }
-  return res.json();
-}
+export const listConversations = () =>
+  api.get(`${BASE}`);
 
-export async function getMessages(conversationId, { beforeId, limit } = {}) {
+export const getMessages = (conversationId, { beforeId, limit } = {}) => {
   const qs = new URLSearchParams();
   if (beforeId) qs.set("beforeId", beforeId);
   if (limit) qs.set("limit", limit);
-  const res = await fetch(
-    `${BASE}/${conversationId}${qs.toString() ? `?${qs.toString()}` : ""}`,
-    { credentials: "include" }
-  );
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "No se pudieron cargar los mensajes");
-  }
-  // { messages: [...] }
-  return res.json();
-}
+  return api.get(`${BASE}/${conversationId}${qs.toString() ? `?${qs}` : ""}`);
+};
 
-export async function sendMessage(conversationId, body) {
-  const res = await fetch(`${BASE}/${conversationId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ body }),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "No se pudo enviar el mensaje");
-  }
-  // { id, senderId, senderRole, body, createdAt }
-  return res.json();
-}
+export const sendMessage = (conversationId, body) =>
+  api.post(`${BASE}/${conversationId}`, { body });
 
-export async function markRead(conversationId) {
-  const res = await fetch(`${BASE}/${conversationId}/read`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "No se pudo marcar como leído");
-  }
-  // { ok: true, lastReadMessageId }
-  return res.json();
-}
+export const markRead = (conversationId) =>
+  api.post(`${BASE}/${conversationId}/read`);
 
-export async function getUnreadCount() {
-  const res = await fetch(`${BASE}/unread-count`, { credentials: "include" });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(txt || "No se pudo obtener el conteo de no leídos");
-  }
-  // { unread: number }
-  return res.json();
-}
+export const getUnreadCount = () =>
+  api.get(`${BASE}/unread-count`);

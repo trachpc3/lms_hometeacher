@@ -1,5 +1,5 @@
 // src/components/SidebarProfesor.jsx
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -8,11 +8,15 @@ import {
   BarChart,
   DoorOpen,
   RefreshCw,
+  Home,
 } from "lucide-react";
 import logo from "../assets/loog.png";
 
 const SidebarProfesor = ({ isSidebarOpen, setIsSidebarOpen }) => {
+  const location = useLocation();
   const handleClose = () => setIsSidebarOpen && setIsSidebarOpen(false);
+
+  const insideCurso = location.pathname.startsWith("/home");
 
   return (
     <aside
@@ -37,15 +41,25 @@ const SidebarProfesor = ({ isSidebarOpen, setIsSidebarOpen }) => {
           <SidebarItem to="/dashboard-profesor/reportes" icon={BarChart} label="Reportes" onClick={handleClose} />
         </nav>
 
-        {/* Entrar al Curso (layout alumno) */}
-        <div className="pt-4 border-t border-gray-200 mt-4">
-          <SidebarItem
-            to="/home"
-            icon={DoorOpen}
-            label="Entrar al Curso"
-            variant="primary"
-            onClick={handleClose}
-          />
+        {/* Acciones inferiores */}
+        <div className="pt-4 border-t border-gray-200 mt-4 space-y-2">
+          {!insideCurso ? (
+            <SidebarItem
+              to="/home"
+              icon={DoorOpen}
+              label="Entrar al Curso"
+              variant="primary"
+              onClick={handleClose}
+            />
+          ) : (
+            <SidebarItem
+              to="/dashboard-profesor"
+              icon={Home}
+              label="Volver al Panel"
+              variant="secondary"
+              onClick={handleClose}
+            />
+          )}
         </div>
       </div>
     </aside>
@@ -59,6 +73,7 @@ function SidebarItem({ to, icon: Icon, label, onClick, variant }) {
     default: "bg-gray-100 hover:bg-gray-200 text-gray-800",
     active: "bg-blue-600 text-white hover:bg-blue-700",
     primary: "bg-green-500 text-white hover:bg-green-600",
+    secondary: "bg-purple-500 text-white hover:bg-purple-600",
   };
 
   return (
@@ -68,7 +83,7 @@ function SidebarItem({ to, icon: Icon, label, onClick, variant }) {
       role="menuitem"
       className={({ isActive }) =>
         `${base} ${
-          variant === "primary" ? variants.primary : isActive ? variants.active : variants.default
+          variant ? variants[variant] : isActive ? variants.active : variants.default
         }`
       }
     >

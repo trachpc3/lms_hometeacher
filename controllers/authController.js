@@ -297,16 +297,16 @@ function msToNumber(str) {
 }
 
 function formatearUsuario(user) {
-  let imagenFinal;
-  if (!user.imagen || user.imagen === "/default-profile.png") {
-    imagenFinal = "/images/default-profile.jpg";
-  } else if (String(user.imagen).startsWith("http")) {
-    imagenFinal = user.imagen;
-  } else {
-    imagenFinal =
-      user.imagen.startsWith("/uploads") || user.imagen.startsWith("http")
+  let imagenFinal = null;
+
+  if (user.imagen) {
+    if (String(user.imagen).startsWith("http")) {
+      imagenFinal = user.imagen;
+    } else {
+      imagenFinal = user.imagen.startsWith("/uploads")
         ? user.imagen
         : `/uploads/${user.imagen}`;
+    }
   }
 
   return {

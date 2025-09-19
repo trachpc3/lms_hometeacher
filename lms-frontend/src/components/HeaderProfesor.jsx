@@ -1,8 +1,9 @@
 // src/components/HeaderProfesor.jsx
-import { useState } from "react";
-import { HelpCircle, Menu, LogOut, User, Bell, MessageCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { HelpCircle, Menu, LogOut, User, Bell, MessageCircle, Megaphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
+import SendNotificationModal from "@/components/SendNotificationModal"; // 👈 NUEVO
 
 const HeaderProfesor = ({
   user,
@@ -13,8 +14,12 @@ const HeaderProfesor = ({
 }) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState("");
+  const [sendOpen, setSendOpen] = useState(false); // 👈 NUEVO
 
-  const avatarSrc = getAvatarUrl(user?.imagen);
+  useEffect(() => {
+    setAvatarSrc(getAvatarUrl(user?.imagen, user?._updatedAt));
+  }, [user?.imagen, user?._updatedAt]);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -35,8 +40,17 @@ const HeaderProfesor = ({
         <HelpCircle size={20} /> Centro de Ayuda
       </button>
 
-      {/* Área derecha: Mensajes + Notificaciones + Perfil */}
+      {/* Área derecha */}
       <div className="flex items-center gap-2 md:gap-4">
+        {/* Enviar aviso (abre modal) */}
+        <button
+          onClick={() => setSendOpen(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+        >
+          <Megaphone size={18} />
+          <span className="hidden md:inline">Enviar aviso</span>
+        </button>
+
         {/* Mensajes */}
         <button
           onClick={() => navigate("/dashboard-profesor/mensajes")}
@@ -85,14 +99,14 @@ const HeaderProfesor = ({
             <span className="text-gray-700 font-semibold text-sm md:text-base">
               Hola {user?.nombre ?? "Usuario"}
             </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300 bg-gray-100">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300">
               <img
                 src={avatarSrc}
                 alt="User"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = "/assets/img/default-profile.png";
+                  e.currentTarget.src = getAvatarUrl(null);
                 }}
               />
             </div>
@@ -106,7 +120,7 @@ const HeaderProfesor = ({
               <button
                 onClick={() => {
                   setDropdownOpen(false);
-                  navigate("/perfil");
+                  // Perfil del profesor
                 }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                 role="menuitem"
@@ -117,7 +131,7 @@ const HeaderProfesor = ({
               <button
                 onClick={() => {
                   setDropdownOpen(false);
-                  handleLogout?.();
+                  if (typeof handleLogout === "function") handleLogout();
                 }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
                 role="menuitem"
@@ -129,6 +143,9 @@ const HeaderProfesor = ({
           )}
         </div>
       </div>
+
+      {/* Modal enviar aviso */}
+      <SendNotificationModal open={sendOpen} onClose={() => setSendOpen(false)} />
     </header>
   );
 };

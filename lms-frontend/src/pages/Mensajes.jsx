@@ -15,8 +15,6 @@ import NewConversationModal from "@/components/NewConversationModal";
 import { useLocation, useNavigate } from "react-router-dom";
 
 // 👇 PeerAvatar con fallback y logs de depuración
-import { getAvatarUrl } from "@/utils/getAvatarUrl";
-
 function PeerAvatar({ peer }) {
   const src = getAvatarUrl(peer?.imagen);
 

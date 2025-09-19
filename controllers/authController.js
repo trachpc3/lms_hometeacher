@@ -297,16 +297,25 @@ function msToNumber(str) {
 }
 
 function formatearUsuario(user) {
-  let imagenFinal = null;
+  // Normaliza imagen:
+  // - null o default antiguos  -> asset público del frontend
+  // - http(s)                  -> respetar
+  // - /uploads/...             -> respetar
+  // - nombre suelto            -> /uploads/avatars/<nombre>
+  const raw = user?.imagen ? String(user.imagen).trim() : "";
 
-  if (user.imagen) {
-    if (String(user.imagen).startsWith("http")) {
-      imagenFinal = user.imagen;
-    } else {
-      imagenFinal = user.imagen.startsWith("/uploads")
-        ? user.imagen
-        : `/uploads/${user.imagen}`;
-    }
+  let imagenFinal;
+  if (!raw || raw === "/default-profile.png" || raw === "/default-profile.jpg") {
+    imagenFinal = "/assets/img/default-profile.png";
+  } else if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    imagenFinal = raw;
+  } else if (raw.startsWith("/assets/")) {
+    imagenFinal = raw; // ya es asset público del frontend
+  } else if (raw.startsWith("/uploads/")) {
+    imagenFinal = raw; // ya es ruta pública del backend
+  } else {
+    // nombre suelto como "user_10.png" -> a carpeta avatars
+    imagenFinal = `/uploads/avatars/${raw.replace(/^\/+/, "")}`;
   }
 
   return {

@@ -1,12 +1,6 @@
+// src/pages/HomeProfesor.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import {
-  Menu,
-  Users,
-  ClipboardList,
-  RefreshCw,
-  AlertTriangle,
-} from "lucide-react";
+import { Users, ClipboardList, RefreshCw, AlertTriangle } from "lucide-react";
 import { Bar, Pie, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,9 +15,6 @@ import {
   LineElement,
 } from "chart.js";
 
-import HeaderProfesor from "../components/HeaderProfesor";
-import SidebarProfesor from "../components/SidebarProfesor";
-import { getUserFromLocalStorage } from "../hooks/useUser";
 import { fetchTeacherDashboard } from "../services/dashboardService";
 import { fetchContadoresAlumnos } from "../services/alumnosService";
 
@@ -71,36 +62,25 @@ const useTimeAgo = (date) => {
   }, [date]);
 };
 
-const DashboardProfesor = () => {
-  const [user, setUser] = useState({ nombre: "", imagen: "" });
+export default function HomeProfesor() {
   const [stats, setStats] = useState({
     alumnos: 0,
     actividades: 0,
-    progreso: 0,      // sigue existiendo para las gráficas
-    renovaciones: 0,  // NUEVO para la card
+    progreso: 0,
+    renovaciones: 0,
   });
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-
-  const navigate = useNavigate();
-  const location = useLocation();
   const abortRef = useRef(null);
 
   useEffect(() => {
-    const userData = getUserFromLocalStorage();
-    if (!userData || userData.rol !== "profesor") {
-      navigate("/");
-      return;
-    }
-    setUser(userData);
     cargarDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, []);
 
-  const cargarDashboard = async () => {
+  async function cargarDashboard() {
     setLoading(true);
     setChartsLoading(true);
     setError(null);
@@ -109,7 +89,6 @@ const DashboardProfesor = () => {
     abortRef.current = new AbortController();
 
     try {
-      // Pedimos dashboard + contadores en paralelo
       const [dashRes, contRes] = await Promise.all([
         fetchTeacherDashboard({ signal: abortRef.current.signal }),
         fetchContadoresAlumnos(),
@@ -118,7 +97,7 @@ const DashboardProfesor = () => {
       const alumnosAsignados = Number(contRes?.misAlumnos ?? 0);
 
       setStats({
-        alumnos: alumnosAsignados,                           // 👈 ahora coincide con "Mis alumnos"
+        alumnos: alumnosAsignados,
         actividades: Number(dashRes?.actividades ?? 0),
         progreso: Number(dashRes?.progreso ?? 0),
         renovaciones: Number(dashRes?.renovaciones ?? 0),
@@ -130,12 +109,13 @@ const DashboardProfesor = () => {
       setLoading(false);
       setTimeout(() => setChartsLoading(false), 150);
     }
-  };
+  }
 
   const timeAgo = useTimeAgo(lastUpdated);
 
   // ======= Datos para charts =======
   const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"];
+
   const progresoSerie = useMemo(() => {
     const base = [20, 35, 45, 55, 65, Math.max(10, Math.min(100, stats.progreso))];
     return base;
@@ -147,211 +127,171 @@ const DashboardProfesor = () => {
     return [completadas, pendientes];
   }, [stats.actividades]);
 
-  const notasSerie = useMemo(() => [6.8, 7.2, 7.9, 8.1, 8.4, 8.6], []);
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { position: "bottom" }, tooltip: { mode: "index", intersect: false } },
-    scales: { y: { beginAtZero: true, ticks: { stepSize: 20 } } },
-  };
-
   return (
-    <div className="flex h-screen overflow-hidden relative">
-      {/* Mobile toggle */}
-      <button
-        aria-label="Abrir menú lateral"
-        className="absolute top-4 left-4 z-50 bg-white border border-gray-200 rounded-xl p-2 shadow md:hidden"
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      >
-        <Menu size={22} />
-      </button>
-
-      <SidebarProfesor isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
-
-      <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
-        <div className="sticky top-0 z-40 bg-gray-50 shadow-sm border-b border-gray-200">
-          <HeaderProfesor
-            user={user}
-            handleLogout={() => {
-              localStorage.removeItem("user");
-              navigate("/");
-            }}
-          />
+    <div className="p-6">
+      {/* Header del panel */}
+      <div className="flex items-start justify-between mb-6 gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Panel de Control</h1>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={cargarDashboard}
+            className="inline-flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-3 py-2 rounded-xl hover:bg-gray-50 shadow-sm"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            Refrescar
+          </button>
+          <span className="text-xs text-gray-500">
+            {lastUpdated ? `Actualizado hace ${timeAgo}` : "—"}
+          </span>
+        </div>
+      </div>
 
-        <main className="flex-1 p-6 overflow-y-auto bg-gray-100">
-          <Outlet />
+      {/* Errores */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-start gap-3">
+          <AlertTriangle className="mt-0.5" size={18} />
+          <div className="flex-1">
+            <p className="font-semibold">No se pudo cargar el dashboard.</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={cargarDashboard}
+            className="text-sm underline decoration-red-400 hover:decoration-red-600"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
-          {location.pathname === "/dashboard-profesor" && (
-            <>
-              {/* Header del panel */}
-              <div className="flex items-start justify-between mb-6 gap-3">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">Panel de Control</h1>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={cargarDashboard}
-                    className="inline-flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-3 py-2 rounded-xl hover:bg-gray-50 shadow-sm"
-                  >
-                    <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-                    Refrescar
-                  </button>
-                  <span className="text-xs text-gray-500">
-                    {lastUpdated ? `Actualizado hace ${timeAgo}` : "—"}
-                  </span>
-                </div>
+      {/* Tarjetas de KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {loading ? (
+          <>
+            <SkeletonCard icon={<Users color="#3B82F6" size={32} />} />
+            <SkeletonCard icon={<ClipboardList color="#10B981" size={32} />} />
+            <SkeletonCard icon={<RefreshCw color="#F59E0B" size={32} />} />
+          </>
+        ) : (
+          <>
+            {/* 👥 Alumnos */}
+            <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+              <Users color="#3B82F6" size={32} />
+              <div>
+                <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
+                <p className="text-gray-600 text-sm">Alumnos Asignados</p>
               </div>
+            </div>
 
-              {/* Errores */}
-              {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5" size={18} />
-                  <div className="flex-1">
-                    <p className="font-semibold">No se pudo cargar el dashboard.</p>
-                    <p className="text-sm">{error}</p>
-                  </div>
-                  <button
-                    onClick={cargarDashboard}
-                    className="text-sm underline decoration-red-400 hover:decoration-red-600"
-                  >
-                    Reintentar
-                  </button>
-                </div>
-              )}
-
-              {/* Tarjetas de KPIs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {loading ? (
-                  <>
-                    <SkeletonCard icon={<Users color="#3B82F6" size={32} />} />
-                    <SkeletonCard icon={<ClipboardList color="#10B981" size={32} />} />
-                    <SkeletonCard icon={<RefreshCw color="#F59E0B" size={32} />} />
-                  </>
-                ) : (
-                  <>
-                    {/* 👥 Alumnos */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <Users color="#3B82F6" size={32} />
-                      <div>
-                        <h2 className="text-2xl font-bold leading-tight">{stats.alumnos}</h2>
-                        <p className="text-gray-600 text-sm">Alumnos Asignados</p>
-                      </div>
-                    </div>
-
-                    {/* 📋 Actividades */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <ClipboardList color="#10B981" size={32} />
-                      <div>
-                        <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
-                        <p className="text-gray-600 text-sm">Actividades Pendientes</p>
-                      </div>
-                    </div>
-
-                    {/* 🔄 Renovaciones */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
-                      <RefreshCw color="#F59E0B" size={32} />
-                      <div>
-                        <h2 className="text-2xl font-bold leading-tight">{stats.renovaciones ?? 0}</h2>
-                        <p className="text-gray-600 text-sm">Renovaciones</p>
-                      </div>
-                    </div>
-                  </>
-                )}
+            {/* 📋 Actividades */}
+            <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+              <ClipboardList color="#10B981" size={32} />
+              <div>
+                <h2 className="text-2xl font-bold leading-tight">{stats.actividades}</h2>
+                <p className="text-gray-600 text-sm">Actividades Pendientes</p>
               </div>
+            </div>
 
-              {/* Gráficas */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                {chartsLoading ? (
-                  <>
-                    <SkeletonChart />
-                    <SkeletonChart />
-                    <SkeletonChart />
-                  </>
-                ) : (
-                  <>
-                    {/* Progreso de los alumnos */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl">
-                      <h2 className="text-lg font-semibold mb-4">Progreso de los Alumnos</h2>
-                      <div className="h-64">
-                        <Bar
-                          data={{
-                            labels: meses,
-                            datasets: [
-                              {
-                                label: "Progreso (%)",
-                                data: progresoSerie,
-                                backgroundColor: "#3B82F6",
-                                borderRadius: 10,
-                              },
-                            ],
-                          }}
-                          options={chartOptions}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Distribución de actividades */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl">
-                      <h2 className="text-lg font-semibold mb-4">Distribución de Actividades</h2>
-                      <div className="h-64 flex items-center justify-center">
-                        <Pie
-                          data={{
-                            labels: ["Completadas", "Pendientes"],
-                            datasets: [
-                              {
-                                data: actividadesDistribucion,
-                                backgroundColor: ["#22C55E", "#EF4444"],
-                                borderWidth: 0,
-                              },
-                            ],
-                          }}
-                          options={{
-                            responsive: true,
-                            plugins: { legend: { position: "bottom" } },
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Promedio de calificaciones */}
-                    <div className="bg-white p-6 shadow-md rounded-2xl">
-                      <h2 className="text-lg font-semibold mb-4">Promedio de Calificaciones</h2>
-                      <div className="h-64">
-                        <Line
-                          data={{
-                            labels: meses,
-                            datasets: [
-                              {
-                                label: "Calificación",
-                                data: [6.8, 7.2, 7.9, 8.1, 8.4, 8.6],
-                                borderColor: "#8B5CF6",
-                                backgroundColor: "rgba(139, 92, 246, 0.15)",
-                                tension: 0.35,
-                                fill: true,
-                                pointRadius: 3,
-                              },
-                            ],
-                          }}
-                          options={{
-                            ...chartOptions,
-                            scales: {
-                              y: { beginAtZero: true, suggestedMax: 10, ticks: { stepSize: 2 } },
-                            },
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+            {/* 🔄 Renovaciones */}
+            <div className="bg-white p-6 shadow-md rounded-2xl flex items-center gap-4">
+              <RefreshCw color="#F59E0B" size={32} />
+              <div>
+                <h2 className="text-2xl font-bold leading-tight">{stats.renovaciones ?? 0}</h2>
+                <p className="text-gray-600 text-sm">Renovaciones</p>
               </div>
-            </>
-          )}
-        </main>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Gráficas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        {chartsLoading ? (
+          <>
+            <SkeletonChart />
+            <SkeletonChart />
+            <SkeletonChart />
+          </>
+        ) : (
+          <>
+            {/* Progreso de los alumnos */}
+            <div className="bg-white p-6 shadow-md rounded-2xl">
+              <h2 className="text-lg font-semibold mb-4">Progreso de los Alumnos</h2>
+              <div className="h-64">
+                <Bar
+                  data={{
+                    labels: meses,
+                    datasets: [
+                      {
+                        label: "Progreso (%)",
+                        data: progresoSerie,
+                        backgroundColor: "#3B82F6",
+                        borderRadius: 10,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: "bottom" }, tooltip: { mode: "index", intersect: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 20 } } },
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Distribución de actividades */}
+            <div className="bg-white p-6 shadow-md rounded-2xl">
+              <h2 className="text-lg font-semibold mb-4">Distribución de Actividades</h2>
+              <div className="h-64 flex items-center justify-center">
+                <Pie
+                  data={{
+                    labels: ["Completadas", "Pendientes"],
+                    datasets: [
+                      {
+                        data: actividadesDistribucion,
+                        backgroundColor: ["#22C55E", "#EF4444"],
+                        borderWidth: 0,
+                      },
+                    ],
+                  }}
+                  options={{ responsive: true, plugins: { legend: { position: "bottom" } } }}
+                />
+              </div>
+            </div>
+
+            {/* Promedio de calificaciones */}
+            <div className="bg-white p-6 shadow-md rounded-2xl">
+              <h2 className="text-lg font-semibold mb-4">Promedio de Calificaciones</h2>
+              <div className="h-64">
+                <Line
+                  data={{
+                    labels: meses,
+                    datasets: [
+                      {
+                        label: "Calificación",
+                        data: [6.8, 7.2, 7.9, 8.1, 8.4, 8.6],
+                        borderColor: "#8B5CF6",
+                        backgroundColor: "rgba(139, 92, 246, 0.15)",
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 3,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: "bottom" } },
+                    scales: { y: { beginAtZero: true, suggestedMax: 10, ticks: { stepSize: 2 } } },
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
-};
-
-export default DashboardProfesor;
+}

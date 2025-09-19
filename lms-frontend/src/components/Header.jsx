@@ -1,6 +1,6 @@
 // src/components/Header.jsx
 import { HelpCircle, Phone, Menu, LogOut, CheckCircle, MessageCircle, Bell } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import { useState } from "react";
@@ -13,9 +13,13 @@ const Header = ({
   unreadNotifs = 0,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 para saber si estamos en /home
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const avatarSrc = getAvatarUrl(user?.imagen, user?._updatedAt);
+
+  const isProfesor = user?.rol === "profesor";
+  const insideCursoAlumno = location.pathname.startsWith("/home"); // 👈 estamos en el curso (layout alumno)
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -33,6 +37,17 @@ const Header = ({
 
       {/* Acciones derecha */}
       <div className="flex items-center gap-2 md:gap-4">
+        {/* Si el usuario es PROFESOR y está en /home → botón para volver al panel */}
+        {isProfesor && insideCursoAlumno && (
+          <button
+            onClick={() => navigate("/dashboard-profesor")}
+            className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
+            title="Volver al panel de profesor"
+          >
+            Volver al Panel
+          </button>
+        )}
+
         {/* Tutorial */}
         <button
           onClick={startTutorial}
@@ -53,7 +68,7 @@ const Header = ({
           <span className="hidden sm:inline">¿Te llamamos?</span>
         </a>
 
-        {/* Mensajes (chat con profesor) */}
+        {/* Mensajes */}
         <button
           onClick={() => navigate("/home/mensajes")}
           className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
@@ -69,7 +84,7 @@ const Header = ({
           )}
         </button>
 
-        {/* Notificaciones (campana) */}
+        {/* Notificaciones */}
         <button
           onClick={() => navigate("/notificaciones")}
           className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"

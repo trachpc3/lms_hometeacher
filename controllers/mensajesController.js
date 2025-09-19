@@ -26,17 +26,29 @@ function normalizeImage(imagen) {
   if (!imagen) return "/assets/img/default-profile.png";
 
   const val = String(imagen).trim();
-  if (val === "/default-profile.png" || val === "/default-profile.jpg") {
+
+  // 🟢 Casos default antiguos o inconsistentes -> asset público
+  if (
+    val === "/default-profile.png" ||
+    val === "/default-profile.jpg" ||
+    val.endsWith("/assets/img/default-profile.png")
+  ) {
     return "/assets/img/default-profile.png";
   }
 
+  // 🟢 Si ya es URL absoluta
   if (/^https?:\/\//i.test(val)) return val;
 
+  // 🟢 Si YA es un asset del frontend, NO toques
+  if (val.startsWith("/assets/")) return val;
+
+  // 🟢 Si ya es ruta pública del backend, respétala
   if (val.startsWith("/uploads/")) return val;
 
-  // nombre suelto -> a carpeta avatars
+  // 🟢 Nombre suelto (user_12.jpg) -> a carpeta avatars del backend
   return `/uploads/avatars/${val.replace(/^\/+/, "")}`;
 }
+
 
 async function getAssignedProfessorId(conn, studentId) {
   const [[row]] = await conn.query(

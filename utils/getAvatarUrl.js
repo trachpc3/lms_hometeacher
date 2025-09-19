@@ -1,7 +1,6 @@
 // src/utils/getAvatarUrl.js
 import { API_BASE_URL } from "@/config";
 
-// Quita "/api" del final para obtener el origen base del backend
 const ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 const DEFAULT = "/assets/img/default-profile.png";
 
@@ -16,22 +15,22 @@ export function getAvatarUrl(imagen) {
     return DEFAULT;
   }
 
-  // 2) Si ya es URL absoluta (CDN, Google, etc.)
+  // 2) URL absoluta
   if (/^https?:\/\//i.test(imagen)) {
     return imagen.includes("?") ? `${imagen}&t=${Date.now()}` : `${imagen}?t=${Date.now()}`;
   }
 
-  // 3) Si el backend ya nos manda la ruta del asset público, respétala
+  // 3) Si el backend ya envía un asset del frontend, no tocar
   if (imagen.startsWith("/assets/")) {
-    return imagen; // no añadir ORIGIN ni cache-buster
+    return imagen; // no ORIGIN, no cache-buster
   }
 
-  // 4) Si viene en formato público del backend (/uploads/...), respétalo
+  // 4) Si ya es una ruta pública del backend
   if (imagen.startsWith("/uploads/")) {
     return `${ORIGIN}${imagen}?t=${Date.now()}`;
   }
 
-  // 5) Nombre suelto (user_12.jpg) => compón como avatar en el backend
+  // 5) Nombre suelto (user_12.jpg) -> avatars del backend
   const clean = imagen.replace(/^\/+/, "");
   return `${ORIGIN}/uploads/avatars/${clean}?t=${Date.now()}`;
 }

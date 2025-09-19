@@ -1,31 +1,36 @@
 // src/utils/getAvatarUrl.js
 import { API_BASE_URL } from "@/config";
 
-const UPLOAD_BASE = `${API_BASE_URL.replace(/\/$/, "")}/uploads`;
+const ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const DEFAULT = "/assets/img/default-profile.png";
 
-/**
- * Construye una URL segura para imágenes de perfil con cache-buster.
- * Acepta:
- *  - "user_12.jpg"
- *  - "/uploads/avatars/user_12.jpg"
- *  - "avatars/user_12.jpg"
- *  - URL absoluta (http/https)
- */
-export function getAvatarUrl(raw) {
-  const DEFAULT = "avatars/default-profile.jpg";
+export function getAvatarUrl(imagen) {
+  // 1) Si no hay imagen o es un marcador viejo → asset público
+  if (
+    !imagen ||
+    imagen === "default-profile.png" ||
+    imagen === "/default-profile.png" ||
+    imagen === "/default-profile.jpg"
+  ) {
+    return DEFAULT;
+  }
 
-  if (!raw) return addCacheBuster(`${UPLOAD_BASE}/${DEFAULT}`);
+  // 2) URL absoluta (ej: Google, Facebook)
+  if (/^https?:\/\//i.test(imagen)) {
+    return imagen.includes("?") ? `${imagen}&t=${Date.now()}` : `${imagen}?t=${Date.now()}`;
+  }
 
-  if (/^https?:\/\//i.test(raw)) return addCacheBuster(raw);
+  // 3) Si ya apunta a un asset del frontend
+  if (imagen.startsWith("/assets/")) {
+    return imagen;
+  }
 
-  // Limpia cualquier ruta o prefijo y se queda solo con el nombre del archivo
-  const fname = String(raw).split("/").pop();
+  // 4) Si viene de /uploads/ en backend
+  if (imagen.startsWith("/uploads/")) {
+    return `${ORIGIN}${imagen}?t=${Date.now()}`;
+  }
 
-  return addCacheBuster(`${UPLOAD_BASE}/avatars/${fname}`);
-}
-
-function addCacheBuster(url) {
-  const u = new URL(url, window.location.origin);
-  u.searchParams.set("t", Date.now());
-  return u.toString();
+  // 5) Nombre suelto (ej: user_12.jpg)
+  const clean = imagen.replace(/^\/+/, "");
+  return `${ORIGIN}/uploads/avatars/${clean}?t=${Date.now()}`;
 }

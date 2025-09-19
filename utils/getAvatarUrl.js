@@ -1,35 +1,37 @@
+// src/utils/getAvatarUrl.js
 import { API_BASE_URL } from "@/config";
 
-// Quita "/api" del final para obtener el origen real del host
+// Quita "/api" del final para obtener el origen base del backend
 const ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const DEFAULT = "/assets/img/default-profile.png";
 
-/**
- * Construye una URL válida para la imagen de perfil del usuario.
- * - Añade cache-buster (?t=timestamp)
- * - Acepta:
- *   - Nombre de archivo simple ("user_12.jpg")
- *   - Ruta relativa tipo "uploads/avatars/user_12.jpg"
- *   - URL absoluta (se retorna tal cual)
- *   - Si es "default-profile.png", usa el asset público
- */
 export function getAvatarUrl(imagen) {
-  const DEFAULT = "/assets/img/default-profile.png";
-
-  // Si no hay imagen o es el nombre del fallback, usa asset local
-  if (!imagen || imagen === "default-profile.png" || imagen === "/default-profile.png") {
+  // 1) Sin imagen o marcadores antiguos => asset público
+  if (
+    !imagen ||
+    imagen === "default-profile.png" ||
+    imagen === "/default-profile.png" ||
+    imagen === "/default-profile.jpg"
+  ) {
     return DEFAULT;
   }
 
-  // Si es una URL absoluta, la retornamos tal cual con cache-buster
+  // 2) Si ya es URL absoluta (CDN, Google, etc.)
   if (/^https?:\/\//i.test(imagen)) {
     return imagen.includes("?") ? `${imagen}&t=${Date.now()}` : `${imagen}?t=${Date.now()}`;
   }
 
-  // Limpia prefijos redundantes
-  const cleanName = imagen
-    .replace(/^\/?uploads\/avatars\/?/, "")
-    .replace(/^avatars\//, "")
-    .replace(/^\//, ""); // quita / inicial si lo hay
+  // 3) Si el backend ya nos manda la ruta del asset público, respétala
+  if (imagen.startsWith("/assets/")) {
+    return imagen; // no añadir ORIGIN ni cache-buster
+  }
 
-  return `${ORIGIN}/uploads/avatars/${cleanName}?t=${Date.now()}`;
+  // 4) Si viene en formato público del backend (/uploads/...), respétalo
+  if (imagen.startsWith("/uploads/")) {
+    return `${ORIGIN}${imagen}?t=${Date.now()}`;
+  }
+
+  // 5) Nombre suelto (user_12.jpg) => compón como avatar en el backend
+  const clean = imagen.replace(/^\/+/, "");
+  return `${ORIGIN}/uploads/avatars/${clean}?t=${Date.now()}`;
 }

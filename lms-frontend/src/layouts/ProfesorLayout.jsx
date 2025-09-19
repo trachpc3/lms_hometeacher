@@ -1,10 +1,12 @@
+// src/layouts/ProfesorLayout.jsx
 import { useState } from "react";
+import { Outlet } from "react-router-dom";              // 👈 IMPORTANTE
 import HeaderProfesor from "@/components/HeaderProfesor";
-import Sidebar from "@/components/Sidebar"; // o tu sidebar de profesor
+import SidebarProfesor from "@/components/SidebarProfesor"; // 👈 usa el sidebar de profesor
 import { useUnread } from "@/hooks/useUnread";
 import { getUserFromLocalStorage } from "@/hooks/useUser";
 
-export default function ProfesorLayout({ children }) {
+export default function ProfesorLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { unreadMessages, unreadNotifs } = useUnread();
   const user = getUserFromLocalStorage();
@@ -23,7 +25,10 @@ export default function ProfesorLayout({ children }) {
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
           md:relative md:translate-x-0 md:w-72`}
       >
-        <Sidebar closeSidebar={() => setIsSidebarOpen(false)} />
+        <SidebarProfesor
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+        />
       </div>
 
       {/* Main */}
@@ -31,14 +36,16 @@ export default function ProfesorLayout({ children }) {
         <div className="sticky top-0 z-30 bg-gray-50 shadow-md">
           <HeaderProfesor
             user={user}
-            toggleSidebar={() => setIsSidebarOpen((o) => !o)}
+            toggleSidebar={() => setIsSidebarOpen(o => !o)}
             handleLogout={handleLogout}
-            unreadMsgs={unreadMessages}   // 👈 aquí va el número
+            unreadMsgs={unreadMessages}
             unreadNotifs={unreadNotifs}
           />
         </div>
 
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6">
+          <Outlet />   {/* 👈 AQUI se renderizan las rutas hijas (HomeProfesor, Mensajes, etc.) */}
+        </main>
       </div>
     </div>
   );

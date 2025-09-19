@@ -2,9 +2,9 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 
-// Layouts
-import Layout from "@/layouts/Layout";                 // 👈 alias @ apunta a /src
-import ProfesorLayout from "@/layouts/ProfesorLayout"; // 👈 asegúrate de que existe
+// Layouts (carpeta correcta: src/layouts)
+import Layout from "@/layouts/Layout";
+import ProfesorLayout from "@/layouts/ProfesorLayout";
 
 // Páginas
 import DashboardProfesor from "./pages/HomeProfesor";
@@ -46,7 +46,7 @@ const Notificaciones = () => (
   </div>
 );
 
-// Redirección inteligente para la ruta legacy /mensajes
+// Redirección inteligente para /mensajes según rol
 const MensajesGate = () => {
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const rol = user?.rol;
@@ -61,21 +61,20 @@ const router = createBrowserRouter(
     { path: "/test-nivel", element: <TestNivel /> },
     { path: "/perfil", element: <ProfilePage /> },
 
-    // Compat /mensajes -> deriva por rol
     { path: "/mensajes", element: <MensajesGate /> },
     { path: "/notificaciones", element: <Notificaciones /> },
 
-    // ===== Alumno (Layout con Header de alumno) =====
+    // Alumno (usa Layout de src/layouts)
     {
       path: "/home",
       element: <Layout />,
       children: [
-        { index: true, element: <Home /> },          // home alumno
-        { path: "mensajes", element: <Mensajes /> }, // chat alumno
+        { index: true, element: <Home /> },
+        { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
-    // ===== Profesor (Layout con HeaderProfesor) =====
+    // Profesor (usa ProfesorLayout de src/layouts)
     {
       path: "/dashboard-profesor",
       element: <ProfesorLayout />,
@@ -83,11 +82,11 @@ const router = createBrowserRouter(
         { index: true, element: <DashboardProfesor /> },
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
-        { path: "mensajes", element: <Mensajes /> }, // chat profesor
+        { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
-    // ===== Fundae (layout propio) =====
+    // Fundae (layout propio)
     {
       path: "/fundae",
       element: <HomeFundae />,
@@ -98,7 +97,7 @@ const router = createBrowserRouter(
       ],
     },
 
-    // ===== Rutas de unidades/actividades =====
+    // Unidades/actividades
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },
@@ -111,7 +110,7 @@ const router = createBrowserRouter(
     { path: "/speaking/:actividadId", element: <CharacterSelection /> },
     { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> },
 
-    // ===== Auth extra =====
+    // Auth extra
     { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
     { path: "/restablecer-contraseña", element: <ResetPassword /> },
     { path: "/register", element: <Register /> },

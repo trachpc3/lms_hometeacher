@@ -1,5 +1,5 @@
 // src/components/HeaderProfesor.jsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { HelpCircle, Menu, LogOut, User, Bell, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
@@ -13,11 +13,8 @@ const HeaderProfesor = ({
 }) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [avatarSrc, setAvatarSrc] = useState("");
 
-  useEffect(() => {
-    setAvatarSrc(getAvatarUrl(user?.imagen, user?._updatedAt));
-  }, [user?.imagen, user?._updatedAt]);
+  const avatarSrc = getAvatarUrl(user?.imagen);
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -88,15 +85,14 @@ const HeaderProfesor = ({
             <span className="text-gray-700 font-semibold text-sm md:text-base">
               Hola {user?.nombre ?? "Usuario"}
             </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border border-gray-300 bg-gray-100">
               <img
                 src={avatarSrc}
                 alt="User"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = getAvatarUrl(null);
-
+                  e.currentTarget.src = "/assets/img/default-profile.png";
                 }}
               />
             </div>
@@ -121,11 +117,7 @@ const HeaderProfesor = ({
               <button
                 onClick={() => {
                   setDropdownOpen(false);
-                  if (typeof handleLogout === "function") {
-                    handleLogout();
-                  } else {
-                    console.error("❌ handleLogout no está definido correctamente");
-                  }
+                  handleLogout?.();
                 }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
                 role="menuitem"

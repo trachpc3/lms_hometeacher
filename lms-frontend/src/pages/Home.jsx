@@ -1,14 +1,14 @@
 // src/pages/Home.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { Lock, Unlock } from "lucide-react";
 import toast from "react-hot-toast";
 
-import CountdownBanner from "../components/ui/CountdownBanner";
-import { getUserFromLocalStorage } from "../hooks/useUser";
-import { fetchUnits } from "../services/unitsService";
-import { levels } from "../data/levelsData";
-import { fetchProgress } from "../services/progressService";
+import CountdownBanner from "@/components/ui/CountdownBanner";
+import { getUserFromLocalStorage } from "@/hooks/useUser";
+import { fetchUnits } from "@/services/unitsService";
+import { levels } from "@/data/levelsData";
+import { fetchProgress } from "@/services/progressService";
 
 const levelToNumber = {
   Beginners: 1,
@@ -21,11 +21,9 @@ const levelToNumber = {
 
 export default function HomePage() {
   const navigate = useNavigate();
-
-  const [currentLevel, setCurrentLevel] = useState(() => {
-    const saved = localStorage.getItem("lastLevel");
-    return saved && levels.find((l) => l.id === saved) ? saved : levels[0].id;
-  });
+  const outlet = useOutletContext() || {};
+  // Nivel viene del Layout; fallback a localStorage por acceso directo
+  const currentLevel = outlet.currentLevel || localStorage.getItem("lastLevel") || "Beginners";
 
   const [units, setUnits] = useState([]);
   const [progress, setProgress] = useState({});
@@ -39,13 +37,18 @@ export default function HomePage() {
     }
     setUser(userData);
 
-    if (userData.metodo_registro === "manual" && userData.estado_formacion === "demo") {
+    // Mensaje de bienvenida solo para alumnos en demo
+    if (
+      userData.rol !== "profesor" &&
+      userData.metodo_registro === "manual" &&
+      userData.estado_formacion === "demo"
+    ) {
       toast.success(`👋 Bienvenido/a ${userData.nombre}. Tienes 24h para aprovechar tu acceso demo`);
     }
   }, [navigate]);
 
   useEffect(() => {
-    if (!user.id) return;
+    if (!user.id || !currentLevel) return;
     const nivel = levelToNumber[currentLevel];
     if (nivel) {
       cargarUnidades(nivel, user.rol);
@@ -75,8 +78,8 @@ export default function HomePage() {
         unidades = unidades.map((unit) => ({ ...unit, unlocked: true }));
       }
 
-      const uniqueUnits = Array.from(new Map(unidades.map((u) => [u.id, u])).values());
-      setUnits(uniqueUnits);
+      const unique = Array.from(new Map(unidades.map((u) => [u.id, u])).values());
+      setUnits(unique);
     } catch (error) {
       console.error("❌ Error cargando unidades:", error);
     }
@@ -96,32 +99,10 @@ export default function HomePage() {
     }
   };
 
-  const handleLevelChange = (levelId) => {
-    setCurrentLevel(levelId);
-    localStorage.setItem("lastLevel", levelId);
-    const nivel = levelToNumber[levelId];
-    cargarUnidades(nivel, user.rol);
-  };
-
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Selector de niveles (si lo necesitas en página; si ya lo tienes en el sidebar, puedes quitar esta sección) */}
-      {/* Ejemplo simple de tabs de nivel: */}
-      <div className="flex gap-2 mb-4 overflow-x-auto">
-        {levels.map((lvl) => (
-          <button
-            key={lvl.id}
-            onClick={() => handleLevelChange(lvl.id)}
-            className={`px-4 py-2 rounded-xl border ${
-              currentLevel === lvl.id ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700"
-            }`}
-          >
-            {lvl.name}
-          </button>
-        ))}
-      </div>
-
-      {user.estado_formacion === "demo" && <CountdownBanner />}
+      {/* Banner solo para alumnos en demo (no profesores) */}
+      {user.rol !== "profesor" && user.estado_formacion === "demo" && <CountdownBanner />}
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-700">

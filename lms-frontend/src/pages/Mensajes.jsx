@@ -14,20 +14,25 @@ import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import NewConversationModal from "@/components/NewConversationModal";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// 👇 PeerAvatar con fallback
+// ✅ PeerAvatar con fallback visual y log de depuración
 function PeerAvatar({ peer }) {
-  const src = getAvatarUrl(peer?.imagen);
+  const [err, setErr] = useState(false);
+  const computed = getAvatarUrl(peer?.imagen);
+  const src = err ? "/assets/img/default-profile.png" : computed;
 
-  // 👇 Añade este log para inspeccionar qué llega del backend
-  console.debug("[PeerAvatar] peer.imagen =", peer?.imagen, "→", src);
+  console.debug("[PeerAvatar] peer.imagen =", peer?.imagen, "→", computed, err ? "(fallback)" : "");
 
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border">
-      <img src={src} alt={peer?.nombre || "Usuario"} className="w-full h-full object-cover" />
+      <img
+        src={src}
+        alt={peer?.nombre || "Usuario"}
+        className="w-full h-full object-cover"
+        onError={() => setErr(true)} // 👈 si falla, usamos el asset público
+      />
     </div>
   );
 }
-
 
 export default function Mensajes() {
   const { user } = useUser(); // { id, rol, nombre, imagen }
@@ -322,7 +327,6 @@ export default function Mensajes() {
         )}
       </section>
 
-      {/* Modal profesor */}
       <NewConversationModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}

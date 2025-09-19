@@ -1,34 +1,29 @@
-// src/utils/getAvatarUrl.js
 import { API_BASE_URL } from "@/config";
 
 // Quita "/api" del final para obtener el origen real del host
 const ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
 /**
- * Construye una URL válida para la imagen de perfil del usuario.
- * - Añade cache-buster (?t=timestamp)
- * - Acepta:
- *   - Nombre de archivo simple ("user_12.jpg")
- *   - Ruta relativa tipo "uploads/avatars/user_12.jpg"
- *   - URL absoluta (se retorna tal cual)
+ * Devuelve la URL absoluta para una imagen de usuario.
+ * - Si no hay imagen, devuelve el avatar por defecto (desde el frontend)
+ * - Si es URL externa, la retorna tal cual
+ * - Si es nombre de archivo, la construye apuntando al backend
  */
 export function getAvatarUrl(imagen) {
-  const DEFAULT = "avatars/default-profile.jpg";
-
-  // Si no hay imagen, usar la predeterminada
+  // ✅ 1. Sin imagen → usar imagen pública desde el frontend
   if (!imagen) {
-    return `${ORIGIN}/uploads/${DEFAULT}?t=${Date.now()}`;
+    return "/assets/img/default-profile.png"; // Ya no usa ORIGIN ni cache-buster
   }
 
-  // Si ya es una URL absoluta, devolverla con cache-buster
+  // ✅ 2. Imagen externa (URL completa)
   if (/^https?:\/\//i.test(imagen)) {
-    return imagen.includes("?") ? `${imagen}&t=${Date.now()}` : `${imagen}?t=${Date.now()}`;
+    return imagen;
   }
 
-  // Limpia prefijos redundantes
+  // ✅ 3. Imagen subida por el usuario (desde backend)
   const cleanName = imagen
     .replace(/^\/?uploads\/avatars\/?/, "")
     .replace(/^avatars\//, "");
 
-  return `${ORIGIN}/uploads/avatars/${cleanName}?t=${Date.now()}`;
+  return `${ORIGIN}/api/uploads/avatars/${cleanName}`;
 }

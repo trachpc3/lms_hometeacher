@@ -13,13 +13,13 @@ const Header = ({
   unreadNotifs = 0,
 }) => {
   const navigate = useNavigate();
-  const location = useLocation(); // 👈 para saber si estamos en /home
+  const location = useLocation();
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const avatarSrc = getAvatarUrl(user?.imagen, user?._updatedAt);
 
   const isProfesor = user?.rol === "profesor";
-  const insideCursoAlumno = location.pathname.startsWith("/home"); // 👈 estamos en el curso (layout alumno)
+  const insideCursoAlumno = location.pathname.startsWith("/home");
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -32,48 +32,48 @@ const Header = ({
         <Menu size={24} />
       </button>
 
-      {/* Logo / título (placeholder) */}
       <div className="flex items-center gap-2 md:gap-4" />
 
-      {/* Acciones derecha */}
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Si el usuario es PROFESOR y está en /home → botón para volver al panel */}
-        {isProfesor && insideCursoAlumno && (
+        {/* Caso PROFESOR en el curso del alumno */}
+        {isProfesor && insideCursoAlumno ? (
           <button
             onClick={() => navigate("/dashboard-profesor")}
-            className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
             title="Volver al panel de profesor"
           >
             Volver al Panel
           </button>
+        ) : (
+          <>
+            {/* Tutorial (solo alumnos) */}
+            <button
+              onClick={startTutorial}
+              className="flex items-center gap-2 text-blue-600 font-semibold text-sm md:text-base"
+            >
+              <HelpCircle size={20} />
+              <span className="hidden sm:inline">Tutorial</span>
+            </button>
+
+            {/* ¿Te llamamos? (solo alumnos) */}
+            <a
+              href="https://calendly.com/hometeacher-empresas"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 text-white font-semibold px-3 py-1 rounded-md flex items-center gap-2 text-sm md:text-base hover:bg-blue-700 transition"
+            >
+              <Phone size={18} />
+              <span className="hidden sm:inline">¿Te llamamos?</span>
+            </a>
+          </>
         )}
-
-        {/* Tutorial */}
-        <button
-          onClick={startTutorial}
-          className="flex items-center gap-2 text-blue-600 font-semibold text-sm md:text-base"
-        >
-          <HelpCircle size={20} />
-          <span className="hidden sm:inline">Tutorial</span>
-        </button>
-
-        {/* ¿Te llamamos? */}
-        <a
-          href="https://calendly.com/hometeacher-empresas"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-blue-600 text-white font-semibold px-3 py-1 rounded-md flex items-center gap-2 text-sm md:text-base hover:bg-blue-700 transition"
-        >
-          <Phone size={18} />
-          <span className="hidden sm:inline">¿Te llamamos?</span>
-        </a>
 
         {/* Mensajes */}
         <button
           onClick={() => navigate("/home/mensajes")}
           className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Mensajes (chatear con tu profesor)"
-          title="Mensajes (chatear con tu profesor)"
+          aria-label="Mensajes"
+          title="Mensajes"
         >
           <MessageCircle size={20} />
           <span className="hidden md:inline font-medium">Mensajes</span>
@@ -88,7 +88,7 @@ const Header = ({
         <button
           onClick={() => navigate("/notificaciones")}
           className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Notificaciones del sistema"
+          aria-label="Notificaciones"
           title="Notificaciones"
         >
           <Bell size={20} />

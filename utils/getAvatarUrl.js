@@ -1,29 +1,35 @@
 import { API_BASE_URL } from "@/config";
 
-// Elimina "/api" al final
+// Quita "/api" del final para obtener el origen real del host
 const ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
 /**
- * Retorna una URL válida para la imagen de perfil.
- * - Si ya es una URL absoluta (http/https), la retorna tal cual con cache-buster.
- * - Si es ruta relativa, la transforma.
- * - Si no hay imagen, retorna ruta pública por defecto.
+ * Construye una URL válida para la imagen de perfil del usuario.
+ * - Añade cache-buster (?t=timestamp)
+ * - Acepta:
+ *   - Nombre de archivo simple ("user_12.jpg")
+ *   - Ruta relativa tipo "uploads/avatars/user_12.jpg"
+ *   - URL absoluta (se retorna tal cual)
+ *   - Si es "default-profile.png", usa el asset público
  */
 export function getAvatarUrl(imagen) {
-  if (!imagen) {
-    return `/assets/img/default-profile.png?t=${Date.now()}`;
+  const DEFAULT = "/assets/img/default-profile.png";
+
+  // Si no hay imagen o es el nombre del fallback, usa asset local
+  if (!imagen || imagen === "default-profile.png" || imagen === "/default-profile.png") {
+    return DEFAULT;
   }
 
-  // Si ya es URL absoluta
+  // Si es una URL absoluta, la retornamos tal cual con cache-buster
   if (/^https?:\/\//i.test(imagen)) {
     return imagen.includes("?") ? `${imagen}&t=${Date.now()}` : `${imagen}?t=${Date.now()}`;
   }
 
-  // Si es nueva ruta pública como "/uploads/user_10.png"
-  if (imagen.startsWith("/uploads/")) {
-    return `${ORIGIN}${imagen}?t=${Date.now()}`;
-  }
+  // Limpia prefijos redundantes
+  const cleanName = imagen
+    .replace(/^\/?uploads\/avatars\/?/, "")
+    .replace(/^avatars\//, "")
+    .replace(/^\//, ""); // quita / inicial si lo hay
 
-  // Si es algo simple tipo "user_12.jpg", lo resolvemos como ruta del backend
-  return `${ORIGIN}/uploads/avatars/${imagen}?t=${Date.now()}`;
+  return `${ORIGIN}/uploads/avatars/${cleanName}?t=${Date.now()}`;
 }

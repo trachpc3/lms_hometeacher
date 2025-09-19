@@ -3,8 +3,8 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { UserProvider } from "./context/UserContext";
 
 // Layouts
-import Layout from "@/layout/Layout";                 // 👈 alias @ apunta a /src
-import ProfesorLayout from "@/layout/ProfesorLayout"; // 👈 asegúrate de que existe
+import Layout from "@/layouts/Layout";                 // 👈 alias @ apunta a /src
+import ProfesorLayout from "@/layouts/ProfesorLayout"; // 👈 asegúrate de que existe
 
 // Páginas
 import DashboardProfesor from "./pages/HomeProfesor";

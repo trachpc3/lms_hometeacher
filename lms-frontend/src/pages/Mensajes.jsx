@@ -14,13 +14,13 @@ import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import NewConversationModal from "@/components/NewConversationModal";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// ✅ PeerAvatar con fallback visual y log de depuración
-function PeerAvatar({ peer }) {
-  const [err, setErr] = useState(false);
-  const computed = getAvatarUrl(peer?.imagen);
-  const src = err ? "/assets/img/default-profile.png" : computed;
+// 👇 PeerAvatar con fallback y logs de depuración
+import { getAvatarUrl } from "@/utils/getAvatarUrl";
 
-  console.debug("[PeerAvatar] peer.imagen =", peer?.imagen, "→", computed, err ? "(fallback)" : "");
+function PeerAvatar({ peer }) {
+  const src = getAvatarUrl(peer?.imagen);
+
+  console.debug("[PeerAvatar] peer.imagen =", peer?.imagen, "→", src);
 
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border">
@@ -28,11 +28,15 @@ function PeerAvatar({ peer }) {
         src={src}
         alt={peer?.nombre || "Usuario"}
         className="w-full h-full object-cover"
-        onError={() => setErr(true)} // 👈 si falla, usamos el asset público
+        onError={(e) => {
+          console.warn("[PeerAvatar] fallback activado para:", peer?.imagen);
+          e.currentTarget.src = "/assets/img/default-profile.png";
+        }}
       />
     </div>
   );
 }
+
 
 export default function Mensajes() {
   const { user } = useUser(); // { id, rol, nombre, imagen }

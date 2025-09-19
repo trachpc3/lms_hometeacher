@@ -16,20 +16,18 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 // 👇 PeerAvatar con fallback
 function PeerAvatar({ peer }) {
-  const [err, setErr] = useState(false);
-  const src = err ? "/assets/img/default-profile.png" : getAvatarUrl(peer?.imagen);
+  const src = getAvatarUrl(peer?.imagen);
+
+  // 👇 Añade este log para inspeccionar qué llega del backend
+  console.debug("[PeerAvatar] peer.imagen =", peer?.imagen, "→", src);
 
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border">
-      <img
-        src={src}
-        alt={peer?.nombre || "Usuario"}
-        className="w-full h-full object-cover"
-        onError={() => setErr(true)} // 👈 fallback automático
-      />
+      <img src={src} alt={peer?.nombre || "Usuario"} className="w-full h-full object-cover" />
     </div>
   );
 }
+
 
 export default function Mensajes() {
   const { user } = useUser(); // { id, rol, nombre, imagen }

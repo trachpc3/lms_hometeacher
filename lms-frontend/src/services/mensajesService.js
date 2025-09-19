@@ -1,26 +1,82 @@
 // src/services/mensajesService.js
-import { api } from "../lib/api";
+import { API_BASE_URL } from "@/config";
 
-const BASE = "/mensajes"; // 👈 OJO: api.js ya antepone API_BASE_URL (que incluye /api)
+async function authedFetch(url, options = {}) {
+  let token = localStorage.getItem("token");
 
-export const startConversation = (payload = {}) =>
-  api.post(`${BASE}/start`, payload);
+  let res = await fetch(url, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...(options.headers || {}),
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
 
-export const listConversations = () =>
-  api.get(`${BASE}`);
+  if (res.status === 401) {
+    const r2 = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (r2.ok) {
+      const { token: newToken } = await r2.json().catch(() => ({}));
+      if (newToken) {
+        localStorage.setItem("token", newToken);
+        token = newToken;
+      }
+      // retry
+      res = await fetch(url, {
+        ...options,
+        credentials: "include",
+        headers: {
+          ...(options.headers || {}),
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    }
+  }
 
-export const getMessages = (conversationId, { beforeId, limit } = {}) => {
-  const qs = new URLSearchParams();
-  if (beforeId) qs.set("beforeId", beforeId);
-  if (limit) qs.set("limit", limit);
-  return api.get(`${BASE}/${conversationId}${qs.toString() ? `?${qs}` : ""}`);
-};
+  return res;
+}
 
-export const sendMessage = (conversationId, body) =>
-  api.post(`${BASE}/${conversationId}`, { body });
+// === API wrappers ===
 
-export const markRead = (conversationId) =>
-  api.post(`${BASE}/${conversationId}/read`);
+export async function listConversations() {
+  const res = await authedFetch(`${API_BASE_URL}/mensajes`);
+  if (!res.ok) throw new Error("Error al listar conversaciones");
+  return res.json();
+}
 
-export const getUnreadCount = () =>
-  api.get(`${BASE}/unread-count`);
+export async function getMessages(conversationId) {
+  const res = await authedFetch(`${API_BASE_URL}/mensajes/${conversationId}`);
+  if (!res.ok) throw new Error("Error al obtener mensajes");
+  return res.json();
+}
+
+export async function sendMessage(conversationId, body) {
+  const res = await authedFetch(`${API_BASE_URL}/mensajes/${conversationId}`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+  if (!res.ok) throw new Error("Error al enviar mensaje");
+  return res.json();
+}
+
+export async function markRead(conversationId) {
+  const res = await authedFetch(`${API_BASE_URL}/mensajes/${conversationId}/read`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Error al marcar leído");
+  return res.json();
+}
+
+export async function startConversation(data = {}) {
+  const res = await authedFetch(`${API_BASE_URL}/mensajes/start`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Error al iniciar conversación");
+  return res.json();
+}

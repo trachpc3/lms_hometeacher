@@ -2,6 +2,10 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 
+// Layouts
+import Layout from "./layout/Layout";                 // 👈 alumno
+import ProfesorLayout from "./layout/ProfesorLayout"; // 👈 profesor (nuevo)
+
 // Páginas
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
@@ -57,34 +61,34 @@ const router = createBrowserRouter(
     { path: "/test-nivel", element: <TestNivel /> },
     { path: "/perfil", element: <ProfilePage /> },
 
-    // Ruta compat: decide layout según rol
+    // Compat /mensajes -> deriva por rol
     { path: "/mensajes", element: <MensajesGate /> },
     { path: "/notificaciones", element: <Notificaciones /> },
 
-    // ===== Alumno (layout: Home) =====
-    // Asegúrate de poner <Outlet /> dentro de Home.jsx
+    // ===== Alumno (Layout con Header de alumno) =====
+    // Asegúrate de que Layout.jsx renderiza <Header /> y un <main> con {children}
     {
       path: "/home",
-      element: <Home />,
+      element: <Layout />,
       children: [
-        // Si tu Home ya muestra el dashboard por sí mismo, puedes dejar sin index.
-        // Si quieres un hijo por defecto: { index: true, element: <AlgoDelAlumno/> },
-        { path: "mensajes", element: <Mensajes /> }, // 👈 Mensajes dentro del layout de alumno
+        { index: true, element: <Home /> },            // página principal alumno
+        { path: "mensajes", element: <Mensajes /> },   // chat en layout alumno
       ],
     },
 
-    // ===== Profesor (layout: DashboardProfesor) =====
+    // ===== Profesor (Layout con HeaderProfesor) =====
     {
       path: "/dashboard-profesor",
-      element: <DashboardProfesor />,
+      element: <ProfesorLayout />,
       children: [
+        { index: true, element: <DashboardProfesor /> }, // home del profesor
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
-        { path: "mensajes", element: <Mensajes /> }, // 👈 Mensajes dentro del layout del profe
+        { path: "mensajes", element: <Mensajes /> },     // chat en layout profesor
       ],
     },
 
-    // ===== Fundae (layout) =====
+    // ===== Fundae (layout propio) =====
     {
       path: "/fundae",
       element: <HomeFundae />,
@@ -92,12 +96,10 @@ const router = createBrowserRouter(
         { index: true, element: <FundaePage /> },
         { path: "envios", element: <FundaeList /> },
         { path: "usuarios", element: <FundaeUsers /> },
-        // Si quisieras también mensajes aquí más adelante:
-        // { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
-    // ===== Rutas de unidades/actividades (si no dependen de layout de alumno) =====
+    // ===== Rutas de unidades/actividades =====
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },

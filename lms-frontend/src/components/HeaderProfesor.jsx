@@ -95,7 +95,8 @@ const HeaderProfesor = ({
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = getAvatarUrl("default-profile.jpg");
+                  e.currentTarget.src = getAvatarUrl(null);
+
                 }}
               />
             </div>

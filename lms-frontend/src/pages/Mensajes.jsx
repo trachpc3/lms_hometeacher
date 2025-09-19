@@ -14,11 +14,19 @@ import { getAvatarUrl } from "@/utils/getAvatarUrl";
 import NewConversationModal from "@/components/NewConversationModal";
 import { useLocation, useNavigate } from "react-router-dom";
 
+// 👇 PeerAvatar con fallback
 function PeerAvatar({ peer }) {
-  const src = getAvatarUrl(peer?.imagen);
+  const [err, setErr] = useState(false);
+  const src = err ? "/assets/img/default-profile.png" : getAvatarUrl(peer?.imagen);
+
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border">
-      <img src={src} alt={peer?.nombre || "Usuario"} className="w-full h-full object-cover" />
+      <img
+        src={src}
+        alt={peer?.nombre || "Usuario"}
+        className="w-full h-full object-cover"
+        onError={() => setErr(true)} // 👈 fallback automático
+      />
     </div>
   );
 }
@@ -36,7 +44,7 @@ export default function Mensajes() {
   const bottomRef = useRef(null);
 
   const isProfesor = user?.rol === "profesor";
-  const isAlumno = user?.rol === "estudiante" || user?.rol === "alumno"; // 👈 por si tu payload usa "alumno"
+  const isAlumno = user?.rol === "estudiante" || user?.rol === "alumno";
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,7 +57,7 @@ export default function Mensajes() {
     }
   }, [location.pathname, isProfesor, isAlumno, navigate]);
 
-  // Cargar conversaciones (y auto-crear para alumno si no hay)
+  // Cargar conversaciones
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -64,10 +72,8 @@ export default function Mensajes() {
         if (conversations.length) {
           setActive(conversations[0]);
         } else if (isAlumno) {
-          // Alumno: si no hay hilos, intentamos crearlo con su profesor asignado
-          console.debug("[Mensajes] startConversation for alumno (no convs)");
           try {
-            await startConversation(); // backend deduce profesor_asignado
+            await startConversation();
             const again = await listConversations();
             if (ignore) return;
             setConvs(again.conversations || []);

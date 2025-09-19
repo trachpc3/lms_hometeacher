@@ -3,23 +3,13 @@ export const getUserFromLocalStorage = () => {
   if (!storedUser) return null;
 
   const user = JSON.parse(storedUser);
-  let imagen = user.imagen || "default-profile.jpg";
-
-  if (
-    imagen !== "default-profile.jpg" &&
-    !imagen.startsWith("/uploads/avatars/") &&
-    !imagen.startsWith("http")
-  ) {
-    imagen = `/uploads/avatars/${imagen}`;
-  }
 
   return {
     ...user,
-    imagen,
+    imagen: user.imagen || null, // 👈 dejar que el helper decida si usar default
     estado: user.estado || "",
   };
 };
-
 
 export const saveUserToLocalStorage = (user) => {
   localStorage.setItem("user", JSON.stringify(user));

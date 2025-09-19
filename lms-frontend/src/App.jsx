@@ -3,8 +3,8 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { UserProvider } from "./context/UserContext";
 
 // Layouts
-import Layout from "./layout/Layout";                 // 👈 alumno
-import ProfesorLayout from "./layout/ProfesorLayout"; // 👈 profesor (nuevo)
+import Layout from "@/layout/Layout";                 // 👈 alias @ apunta a /src
+import ProfesorLayout from "@/layout/ProfesorLayout"; // 👈 asegúrate de que existe
 
 // Páginas
 import DashboardProfesor from "./pages/HomeProfesor";
@@ -66,13 +66,12 @@ const router = createBrowserRouter(
     { path: "/notificaciones", element: <Notificaciones /> },
 
     // ===== Alumno (Layout con Header de alumno) =====
-    // Asegúrate de que Layout.jsx renderiza <Header /> y un <main> con {children}
     {
       path: "/home",
       element: <Layout />,
       children: [
-        { index: true, element: <Home /> },            // página principal alumno
-        { path: "mensajes", element: <Mensajes /> },   // chat en layout alumno
+        { index: true, element: <Home /> },          // home alumno
+        { path: "mensajes", element: <Mensajes /> }, // chat alumno
       ],
     },
 
@@ -81,10 +80,10 @@ const router = createBrowserRouter(
       path: "/dashboard-profesor",
       element: <ProfesorLayout />,
       children: [
-        { index: true, element: <DashboardProfesor /> }, // home del profesor
+        { index: true, element: <DashboardProfesor /> },
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
-        { path: "mensajes", element: <Mensajes /> },     // chat en layout profesor
+        { path: "mensajes", element: <Mensajes /> }, // chat profesor
       ],
     },
 

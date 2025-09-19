@@ -84,14 +84,9 @@ const Login = () => {
   };
 
   const procesarUsuario = (token, user) => {
-    const imagenNormalizada =
-      !user.imagen || user.imagen === "/default-profile.png"
-        ? "default-profile.jpg"
-        : user.imagen.replace("/uploads/", "").replace(/^\//, "");
-
     const usuarioLimpio = {
       ...user,
-      imagen: imagenNormalizada,
+      imagen: user.imagen || null, // ✅ DEJAMOS QUE EL HELPER DECIDA
     };
 
     localStorage.setItem("token", token);
@@ -120,23 +115,20 @@ const Login = () => {
 
   return (
     <div className="flex flex-col md:flex-row w-full h-screen">
+      {/* Imagen lateral con texto centrado abajo */}
       <div
-        className="hidden md:flex w-2/3 h-full bg-cover bg-center items-center px-20"
+        className="hidden md:flex w-2/3 h-full bg-cover bg-center relative"
         style={{ backgroundImage: "url('/landing1.jpg')" }}
       >
-        <h1 className="text-white text-5xl font-bold leading-tight">
-          <br />
-          <br />
-          <br />
-          <br />
-          <br />
-          <br />
-          <br />
-          Bienvenido a HomeTeacher <br />
-          Tu academia de inglés online
-        </h1>
+        <div className="absolute bottom-12 left-0 w-full text-center px-6">
+          <h1 className="text-white text-4xl md:text-5xl font-bold leading-tight drop-shadow-md">
+            Bienvenido a HomeTeacher <br />
+            Tu academia de inglés online
+          </h1>
+        </div>
       </div>
 
+      {/* Formulario de login */}
       <div className="w-full md:w-1/3 h-full flex flex-col justify-center items-center bg-white shadow-lg px-10">
         <img src={logo} alt="Logo" className="w-32 mb-6" />
         <h2 className="text-2xl font-semibold text-gray-800">Entra en tu Campus</h2>

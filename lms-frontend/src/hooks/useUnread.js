@@ -11,28 +11,37 @@ export function useUnread() {
 
     async function fetchCounts() {
       try {
+        // Mensajes sin leer
         const resMsgs = await fetch(`${API_BASE_URL}/mensajes/unread-count`, {
           credentials: "include",
         });
-        const { unread: msgs } = await resMsgs.json();
-        if (!ignore) setUnreadMessages(msgs);
+        if (resMsgs.ok) {
+          const { unread } = await resMsgs.json();
+          if (!ignore) setUnreadMessages(Number(unread || 0));
+        }
 
-        // 👇 si tienes endpoint para notifs
-        const resNotifs = await fetch(`${API_BASE_URL}/notificaciones/unread-count`, {
-          credentials: "include",
-        });
-        const { unread: notifs } = await resNotifs.json();
-        if (!ignore) setUnreadNotifs(notifs);
+        // Notificaciones sin leer (si no tienes endpoint, se queda en 0)
+        try {
+          const resNotifs = await fetch(`${API_BASE_URL}/notificaciones/unread-count`, {
+            credentials: "include",
+          });
+          if (resNotifs.ok) {
+            const { unread } = await resNotifs.json();
+            if (!ignore) setUnreadNotifs(Number(unread || 0));
+          }
+        } catch {
+          // Silencia si aún no está implementado
+        }
       } catch (e) {
         console.error("❌ Error al obtener contadores:", e);
       }
     }
 
     fetchCounts();
-    const interval = setInterval(fetchCounts, 30000); // refresca cada 30s
+    const id = setInterval(fetchCounts, 30000); // refresca cada 30s
     return () => {
       ignore = true;
-      clearInterval(interval);
+      clearInterval(id);
     };
   }, []);
 

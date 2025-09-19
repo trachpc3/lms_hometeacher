@@ -96,7 +96,8 @@ const HeaderFundae = ({
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = getAvatarUrl("default-profile.jpg");
+                  ee.currentTarget.src = getAvatarUrl(null);
+
                 }}
               />
             </div>

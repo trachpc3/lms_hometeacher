@@ -15,6 +15,29 @@ function normalizeRole(role) {
   return r;
 }
 
+/**
+ * Normaliza la imagen de usuario para el frontend:
+ * - null, '/default-profile.png', '/default-profile.jpg' -> asset público del frontend
+ * - absoluta (http/https) -> tal cual
+ * - comienza con '/uploads' -> tal cual (ya es ruta pública del back)
+ * - nombre simple ('user_12.jpg') -> lo exponemos como '/uploads/avatars/<nombre>'
+ */
+function normalizeImage(imagen) {
+  if (!imagen) return "/assets/img/default-profile.png";
+
+  const val = String(imagen).trim();
+  if (val === "/default-profile.png" || val === "/default-profile.jpg") {
+    return "/assets/img/default-profile.png";
+  }
+
+  if (/^https?:\/\//i.test(val)) return val;
+
+  if (val.startsWith("/uploads/")) return val;
+
+  // nombre suelto -> a carpeta avatars
+  return `/uploads/avatars/${val.replace(/^\/+/, "")}`;
+}
+
 async function getAssignedProfessorId(conn, studentId) {
   const [[row]] = await conn.query(
     `SELECT profesor_asignado AS profesorId
@@ -94,7 +117,7 @@ async function getPeerInfoBulk(conn, myId, myRole, convIds) {
       id: peer.id,
       role: peer.role,
       nombre: u?.nombre || null,
-      imagen: u?.imagen || null,
+      imagen: normalizeImage(u?.imagen || null), // 👈 NORMALIZA AQUÍ
     };
   }
   return out;
@@ -166,7 +189,6 @@ export const startConversation = async (req, res) => {
     await conn.query(
       `INSERT INTO conversation_participants (conversation_id, user_id, user_role)
        VALUES (?, ?, ?), (?, ?, ?)`,
-
       [conversationId, myId, myRole, conversationId, otherId, otherRole]
     );
 
@@ -237,7 +259,7 @@ export const listConversations = async (req, res) => {
       id: r.id,
       lastMessageAt: r.last_message_at,
       unread: unreadByConv[r.id] || 0,
-      peer: peerMap[r.id] || null,
+      peer: peerMap[r.id] || null, // 👈 peer.imagen ya viene normalizada
       lastMessage: lastByConv[r.id]
         ? {
             id: lastByConv[r.id].id,

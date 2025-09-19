@@ -1,11 +1,12 @@
-// src/layout/Layout.jsx
+// src/layouts/Layout.jsx
 import { useState } from "react";
+import { Outlet } from "react-router-dom";   // 👈 IMPORTANTE
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import { getUserFromLocalStorage } from "../hooks/useUser";
 import { useUnread } from "@/hooks/useUnread"; // 👈 NUEVO
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const user = getUserFromLocalStorage();
 
@@ -28,7 +29,13 @@ const Layout = ({ children }) => {
         onClick={() => setIsSidebarOpen(true)}
         className="md:hidden absolute top-4 left-4 z-50 bg-white border border-gray-300 rounded-md p-2 shadow"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7"></path>
         </svg>
       </button>
@@ -52,17 +59,18 @@ const Layout = ({ children }) => {
         {/* Header fijo arriba */}
         <div className="sticky top-0 z-30 bg-gray-50 shadow-md">
           <Header
-            // user={user}  // opcional, Header usa useUser() internamente
             startTutorial={startTutorial}
             handleLogout={handleLogout}
             toggleSidebar={() => setIsSidebarOpen((o) => !o)}
-            unreadMessages={unreadMessages}  // 👈 NUEVO
-            unreadNotifs={unreadNotifs}      // 👈 NUEVO
+            unreadMessages={unreadMessages}
+            unreadNotifs={unreadNotifs}
           />
         </div>
 
         {/* Contenido dinámico */}
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6">
+          <Outlet />   {/* 👈 AQUÍ SE INYECTAN LAS PÁGINAS HIJAS */}
+        </main>
       </div>
     </div>
   );

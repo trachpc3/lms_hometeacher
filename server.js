@@ -31,6 +31,8 @@ import productiveSkillsRoutes from "./routes/productiveSkillsRoutes.js";
 import testnivelRoutes from "./routes/testnivelRoutes.js";
 import profesoresRoutes from "./routes/profesoresRoutes.js";
 import mensajesRoutes from "./routes/mensajesRoutes.js";
+import notificacionesRoutes from "./routes/notificacionesRoutes.js";
+
 
 
 // __dirname para ES modules
@@ -100,6 +102,8 @@ app.use("/api/productive-skills", verifyToken, productiveSkillsRoutes);
 app.use("/api/testnivel", verifyToken, testnivelRoutes);
 app.use("/api/profesores", verifyToken, profesoresRoutes);
 app.use("/api/mensajes", verifyToken, logAuth, mensajesRoutes); 
+app.use("/api/notificaciones", verifyToken, notificacionesRoutes);
+
 
 
 // Error handler genérico

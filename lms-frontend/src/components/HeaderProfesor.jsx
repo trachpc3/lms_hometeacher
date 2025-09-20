@@ -1,9 +1,18 @@
 // src/components/HeaderProfesor.jsx
 import { useState, useEffect } from "react";
-import { HelpCircle, Menu, LogOut, User, Bell, MessageCircle, Megaphone } from "lucide-react";
+import {
+  HelpCircle,
+  Menu,
+  LogOut,
+  User,
+  Bell,
+  MessageCircle,
+  Megaphone,
+  LayoutDashboard,   // 👈 IMPORTANTE
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
-import SendNotificationModal from "@/components/SendNotificationModal"; // 👈 NUEVO
+import SendNotificationModal from "@/components/SendNotificationModal";
 
 const HeaderProfesor = ({
   user,
@@ -15,7 +24,7 @@ const HeaderProfesor = ({
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState("");
-  const [sendOpen, setSendOpen] = useState(false); // 👈 NUEVO
+  const [sendOpen, setSendOpen] = useState(false);
 
   useEffect(() => {
     setAvatarSrc(getAvatarUrl(user?.imagen, user?._updatedAt));
@@ -42,7 +51,16 @@ const HeaderProfesor = ({
 
       {/* Área derecha */}
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Enviar aviso (abre modal) */}
+        {/* Volver al panel 👈 NUEVO */}
+        <button
+          onClick={() => navigate("/dashboard-profesor")}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+        >
+          <LayoutDashboard size={18} />
+          <span className="hidden md:inline">Volver al panel</span>
+        </button>
+
+        {/* Enviar aviso */}
         <button
           onClick={() => setSendOpen(true)}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
@@ -55,16 +73,11 @@ const HeaderProfesor = ({
         <button
           onClick={() => navigate("/dashboard-profesor/mensajes")}
           className="relative inline-flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Mensajes"
-          title="Mensajes"
         >
           <MessageCircle size={20} />
           <span className="hidden md:inline font-medium">Mensajes</span>
           {unreadMsgs > 0 && (
-            <span
-              className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow"
-              aria-label={`${unreadMsgs} mensajes sin leer`}
-            >
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold shadow">
               {unreadMsgs > 99 ? "99+" : unreadMsgs}
             </span>
           )}
@@ -74,15 +87,10 @@ const HeaderProfesor = ({
         <button
           onClick={() => navigate("/notificaciones")}
           className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Notificaciones del sistema"
-          title="Notificaciones"
         >
           <Bell size={20} />
           {unreadNotifs > 0 && (
-            <span
-              className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-indigo-600 text-white text-[10px] leading-4 text-center font-semibold shadow"
-              aria-label={`${unreadNotifs} notificaciones sin leer`}
-            >
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full bg-indigo-600 text-white text-[10px] leading-4 text-center font-semibold shadow">
               {unreadNotifs > 99 ? "99+" : unreadNotifs}
             </span>
           )}
@@ -93,8 +101,6 @@ const HeaderProfesor = ({
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2"
-            aria-haspopup="menu"
-            aria-expanded={dropdownOpen}
           >
             <span className="text-gray-700 font-semibold text-sm md:text-base">
               Hola {user?.nombre ?? "Usuario"}
@@ -113,17 +119,13 @@ const HeaderProfesor = ({
           </button>
 
           {dropdownOpen && (
-            <div
-              className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 overflow-hidden border border-gray-100"
-              role="menu"
-            >
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 overflow-hidden border border-gray-100">
               <button
                 onClick={() => {
                   setDropdownOpen(false);
-                  // Perfil del profesor
+                  navigate("/perfil");
                 }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                role="menuitem"
               >
                 <User size={18} className="text-blue-500" />
                 Mi Perfil
@@ -134,7 +136,6 @@ const HeaderProfesor = ({
                   if (typeof handleLogout === "function") handleLogout();
                 }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                role="menuitem"
               >
                 <LogOut size={18} />
                 Cerrar sesión

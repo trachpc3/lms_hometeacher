@@ -1,19 +1,19 @@
 // src/pages/Home.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
 import { Lock, Unlock, Menu } from "lucide-react";
 import toast from "react-hot-toast";
 
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
-import HeaderProfesor from "@/components/HeaderProfesor"; // 👈 NUEVO
-import CountdownBanner from "../components/ui/CountdownBanner";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
+import SidebarProfesor from "@/components/SidebarProfesor";
+import HeaderProfesor from "@/components/HeaderProfesor";
+import CountdownBanner from "@/components/ui/CountdownBanner";
 
-import { getUserFromLocalStorage } from "../hooks/useUser";
-import { fetchUnits } from "../services/unitsService";
-import { levels } from "../data/levelsData";
-import { fetchProgress } from "../services/progressService";
-import { useUnread } from "@/hooks/useUnread"; // 👈 NUEVO
+import { getUserFromLocalStorage } from "@/hooks/useUser";
+import { fetchUnits } from "@/services/unitsService";
+import { levels } from "@/data/levelsData";
+import { fetchProgress } from "@/services/progressService";
 
 const levelToNumber = {
   Beginners: 1,
@@ -40,10 +40,7 @@ const HomePage = () => {
   const [user, setUser] = useState({ nombre: "", imagen: "", estado: "", rol: "" });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Unread para badge en header del profesor
-  const { unreadMessages, unreadNotifs } = useUnread();
-
-  // Mostrar dashboard (unidades) sólo cuando estamos exactamente en /home
+  const isProfesor = user?.rol === "profesor";
   const showDashboard = location.pathname === "/home";
 
   useEffect(() => {
@@ -52,24 +49,15 @@ const HomePage = () => {
       navigate("/");
       return;
     }
-
     setUser(userData);
 
-    // 🔔 Mostrar banner demo sólo a alumnos
-    if (
-      userData.rol !== "profesor" &&
-      userData.metodo_registro === "manual" &&
-      userData.estado_formacion === "demo"
-    ) {
-      toast.success(
-        `👋 Bienvenido/a ${userData.nombre}. Tienes 24h para aprovechar tu acceso demo`
-      );
+    if (userData.rol !== "profesor" && userData.metodo_registro === "manual" && userData.estado_formacion === "demo") {
+      toast.success(`👋 Bienvenido/a ${userData.nombre}. Tienes 24h para aprovechar tu acceso demo`);
     }
   }, [navigate]);
 
   useEffect(() => {
     if (!user.id) return;
-
     const nivel = levelToNumber[currentLevel];
     if (nivel) {
       cargarUnidades(nivel, user.rol);
@@ -86,7 +74,6 @@ const HomePage = () => {
         localStorage.removeItem("progressUpdated");
       }
     };
-
     const interval = setInterval(checkProgressUpdate, 2000);
     return () => clearInterval(interval);
   }, [currentLevel, user.rol, user.id]);
@@ -94,13 +81,11 @@ const HomePage = () => {
   const cargarUnidades = async (levelId, userRole) => {
     try {
       let unidades = await fetchUnits(levelId);
-
       if (userRole === "admin" || userRole === "administrador") {
         unidades = unidades.map((unit) => ({ ...unit, unlocked: true }));
       }
-
       const uniqueUnits = Array.from(new Map(unidades.map((u) => [u.id, u])).values());
-      setUnits([...uniqueUnits]);
+      setUnits(uniqueUnits);
     } catch (error) {
       console.error("❌ Error cargando unidades:", error);
     }
@@ -109,16 +94,14 @@ const HomePage = () => {
   const cargarProgreso = async (userId) => {
     try {
       const { progreso } = await fetchProgress(userId);
-
-      const progresoMap = {};
+      const map = {};
       progreso.forEach(({ unidad_id, actividad_id }) => {
-        if (!progresoMap[unidad_id]) progresoMap[unidad_id] = new Set();
-        progresoMap[unidad_id].add(actividad_id);
+        if (!map[unidad_id]) map[unidad_id] = new Set();
+        map[unidad_id].add(actividad_id);
       });
-
-      setProgress(progresoMap);
+      setProgress(map);
     } catch (error) {
-      console.error("❌ Error cargando progreso:", error.message);
+      console.error("❌ Error cargando progreso:", error?.message);
     }
   };
 
@@ -137,7 +120,10 @@ const HomePage = () => {
     navigate("/");
   };
 
-  const isProfesor = user?.rol === "profesor";
+  // ======= HEADER (uno u otro) =======
+  const HeaderToUse = isProfesor ? HeaderProfesor : Header;
+  // ======= SIDEBAR (uno u otro) =======
+  const SidebarToUse = isProfesor ? SidebarProfesor : Sidebar;
 
   return (
     <div className="flex h-screen overflow-hidden relative">
@@ -150,40 +136,33 @@ const HomePage = () => {
         <Menu size={24} />
       </button>
 
-      {/* 👇 Sidebar de alumno SIEMPRE (el profesor quiere navegar las unidades) */}
-      <Sidebar
+      {/* Sidebar: solo UNA, según rol */}
+      <SidebarToUse
         ref={sidebarRef}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        currentLevel={currentLevel}
-        onLevelChange={handleLevelChange}
+        {...(!isProfesor
+          ? { currentLevel, onLevelChange: handleLevelChange }
+          : {})}
       />
 
       <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
-        {/* Header fijo */}
+        {/* Header fijo: solo UNO, según rol */}
         <div className="sticky top-0 z-40 bg-gray-50 shadow-md border-b border-gray-300">
-          {isProfesor ? (
-            <HeaderProfesor
-              user={user}
-              toggleSidebar={() => setIsSidebarOpen((v) => !v)}
-              handleLogout={handleLogout}
-              unreadMsgs={unreadMessages}
-              unreadNotifs={unreadNotifs}
-            />
-          ) : (
-            <Header
-              user={user}
-              handleLogout={handleLogout}
-              toggleSidebar={() => setIsSidebarOpen((v) => !v)}
-            />
-          )}
+          <HeaderToUse
+            user={user}
+            handleLogout={handleLogout}
+            toggleSidebar={() => setIsSidebarOpen((v) => !v)}
+            // En HeaderProfesor estos props extra pintan los botones azules
+            {...(isProfesor ? { /* ya pinta Volver/Enviar aviso por defecto */ } : {})}
+          />
         </div>
 
         {/* Contenido */}
         <main ref={unitsGridRef} className="flex-1 p-6 overflow-y-auto bg-gray-100">
           {showDashboard ? (
             <>
-              {/* ⛔️ Banner demo solo para alumnos */}
+              {/* Banner demo SOLO para alumno */}
               {!isProfesor && user.estado_formacion === "demo" && <CountdownBanner />}
 
               <div className="flex items-center justify-between mb-4">
@@ -255,7 +234,6 @@ const HomePage = () => {
               </div>
             </>
           ) : (
-            // 📌 Aquí se pintan las rutas hijas: /home/mensajes, etc.
             <Outlet />
           )}
         </main>

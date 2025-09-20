@@ -1,9 +1,9 @@
 // src/components/Header.jsx
-import { HelpCircle, Phone, Menu, LogOut, CheckCircle, MessageCircle, Bell } from "lucide-react";
+import { HelpCircle, Phone, Menu, LogOut, MessageCircle, Bell } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { getAvatarUrl } from "@/utils/getAvatarUrl";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const Header = ({
   startTutorial,
@@ -16,10 +16,14 @@ const Header = ({
   const location = useLocation();
   const { user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const avatarSrc = getAvatarUrl(user?.imagen, user?._updatedAt);
+
+  const avatarSrc = useMemo(
+    () => getAvatarUrl(user?.imagen, user?._updatedAt),
+    [user?.imagen, user?._updatedAt]
+  );
 
   const isProfesor = user?.rol === "profesor";
-  const insideCursoAlumno = location.pathname.startsWith("/home");
+  const ocultarAyudas = isProfesor; // 👈 si es profesor, ocultamos Tutorial/¿Te llamamos?
 
   return (
     <header className="bg-gray-50 p-2 md:p-4 flex items-center justify-between shadow-md border-b border-gray-300 z-50 relative">
@@ -32,40 +36,33 @@ const Header = ({
         <Menu size={24} />
       </button>
 
+      {/* Izquierda: (vacío para centrar) */}
       <div className="flex items-center gap-2 md:gap-4" />
 
+      {/* Derecha */}
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Caso PROFESOR en el curso del alumno */}
-        {isProfesor && insideCursoAlumno ? (
+        {/* Tutorial */}
+        {!ocultarAyudas && (
           <button
-            onClick={() => navigate("/dashboard-profesor")}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-            title="Volver al panel de profesor"
+            onClick={startTutorial}
+            className="flex items-center gap-2 text-blue-600 font-semibold text-sm md:text-base"
           >
-            Volver al Panel
+            <HelpCircle size={20} />
+            <span className="hidden sm:inline">Tutorial</span>
           </button>
-        ) : (
-          <>
-            {/* Tutorial (solo alumnos) */}
-            <button
-              onClick={startTutorial}
-              className="flex items-center gap-2 text-blue-600 font-semibold text-sm md:text-base"
-            >
-              <HelpCircle size={20} />
-              <span className="hidden sm:inline">Tutorial</span>
-            </button>
+        )}
 
-            {/* ¿Te llamamos? (solo alumnos) */}
-            <a
-              href="https://calendly.com/hometeacher-empresas"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-blue-600 text-white font-semibold px-3 py-1 rounded-md flex items-center gap-2 text-sm md:text-base hover:bg-blue-700 transition"
-            >
-              <Phone size={18} />
-              <span className="hidden sm:inline">¿Te llamamos?</span>
-            </a>
-          </>
+        {/* ¿Te llamamos? */}
+        {!ocultarAyudas && (
+          <a
+            href="https://calendly.com/hometeacher-empresas"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-600 text-white font-semibold px-3 py-1 rounded-md flex items-center gap-2 text-sm md:text-base hover:bg-blue-700 transition"
+          >
+            <Phone size={18} />
+            <span className="hidden sm:inline">¿Te llamamos?</span>
+          </a>
         )}
 
         {/* Mensajes */}
@@ -88,7 +85,7 @@ const Header = ({
         <button
           onClick={() => navigate("/notificaciones")}
           className="relative p-2 rounded-lg hover:bg-gray-200 text-gray-700 transition-colors"
-          aria-label="Notificaciones"
+          aria-label="Notificaciones del sistema"
           title="Notificaciones"
         >
           <Bell size={20} />
@@ -121,14 +118,19 @@ const Header = ({
           {dropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 overflow-hidden">
               <button
-                onClick={() => navigate("/perfil")}
+                onClick={() => {
+                  setDropdownOpen(false);
+                  navigate("/perfil");
+                }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
-                <CheckCircle size={18} className="text-blue-500" />
-                Mi Perfil
+                Perfil
               </button>
               <button
-                onClick={handleLogout}
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (typeof handleLogout === "function") handleLogout();
+                }}
                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
               >
                 <LogOut size={18} />

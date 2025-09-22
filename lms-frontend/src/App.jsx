@@ -7,7 +7,7 @@ import Layout from "@/layouts/Layout";
 import ProfesorLayout from "@/layouts/ProfesorLayout";
 
 // Páginas (contenido)
-import HomeContent from "./pages/HomeContent";          // 👈 NUEVO: solo contenido del curso
+import HomeContent from "../pages/HomeContent";          // 👈 NUEVO: solo contenido del curso
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";

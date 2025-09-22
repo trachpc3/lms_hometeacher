@@ -4,7 +4,7 @@ import HeaderProfesor from "@/components/HeaderProfesor";
 import SidebarProfesor from "@/components/SidebarProfesor";
 import { useUnread } from "@/hooks/useUnread";
 import { getUserFromLocalStorage } from "@/hooks/useUser";
-import AvisoModal from "@/components/AvisoModal"; // 👈 tu modal
+import AvisoModal from "@/components/SendNotificationModal.jsx"; // 👈 tu modal
 
 export default function ProfesorLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

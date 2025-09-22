@@ -77,17 +77,18 @@ const router = createBrowserRouter(
     },
 
     // ===== Profesor (usa ProfesorLayout) =====
-    {
-      path: "/dashboard-profesor",
-      element: <ProfesorLayout />,              // pinta Header + Sidebar de profesor
-      children: [
-        { index: true, element: <DashboardProfesor /> },
-        { path: "alumnos", element: <Alumnos /> },
-        { path: "renovaciones", element: <Renovaciones /> },
-        { path: "mensajes", element: <Mensajes /> },
-        { path: "curso", element: <HomeContent /> },  // 👈 profesor “Entrar al curso” sin duplicar layout
-      ],
-    },
+   {
+  path: "/dashboard-profesor",
+  element: <ProfesorLayout />,
+  children: [
+    { index: true, element: <DashboardProfesor /> },
+    { path: "alumnos", element: <Alumnos /> },
+    { path: "alumnos/:id", element: <ProfilePage /> }, // ✅ ESTA ES LA NUEVA LÍNEA
+    { path: "renovaciones", element: <Renovaciones /> },
+    { path: "mensajes", element: <Mensajes /> },
+    { path: "curso", element: <HomeContent /> },
+  ],
+},
 
     // ===== Fundae (layout propio) =====
     {

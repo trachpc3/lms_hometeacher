@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Pencil, Trash, PlusCircle, Search, Play, Pause } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // ✅ Importar navigate
+import {
+  Pencil,
+  Trash,
+  PlusCircle,
+  Search,
+  Play,
+  Pause,
+} from "lucide-react";
 import {
   fetchAlumnos,
   addAlumno,
@@ -11,6 +19,7 @@ import AlumnoModal from "../components/AlumnoModal";
 import AccionMasivaModal from "../components/AccionMasivaModal";
 import toast, { Toaster } from "react-hot-toast";
 
+// Función utilitaria para formatear fechas
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
@@ -24,6 +33,7 @@ const formatDate = (dateString) => {
 };
 
 const Alumnos = () => {
+  const navigate = useNavigate(); // ✅ Navegación al perfil
   const [alumnos, setAlumnos] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState(null);
@@ -40,7 +50,6 @@ const Alumnos = () => {
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [accionMasivaOpen, setAccionMasivaOpen] = useState(false);
-
   const [saving, setSaving] = useState({}); // { [id]: boolean }
 
   useEffect(() => {
@@ -110,44 +119,14 @@ const Alumnos = () => {
     }
   };
 
-  const handleAccionMasiva = async (accion, valor) => {
-    try {
-      if (accion === "eliminar") {
-        await Promise.all(seleccionados.map((id) => deleteAlumno(id)));
-        toast.success(`Se eliminaron ${seleccionados.length} alumnos 🗑️`);
-      } else if (accion === "profesor") {
-        await Promise.all(
-          seleccionados.map((id) => updateAlumno(id, { profesor_asignado: valor }))
-        );
-        toast.success(`Alumnos reasignados a otro profesor ✅`);
-      } else {
-        await Promise.all(
-          seleccionados.map((id) => updateAlumno(id, { [accion]: valor }))
-        );
-        toast.success(`Acción "${accion}" aplicada a ${seleccionados.length} alumnos ✅`);
-      }
-
-      await cargarAlumnos();
-      await cargarContadores();
-    } catch (error) {
-      console.error("Error aplicando acción masiva:", error);
-      toast.error("❌ Hubo un error al aplicar la acción masiva");
-    } finally {
-      setAccionMasivaOpen(false);
-    }
-  };
-
   const toggleEstado = async (alumno) => {
     if (alumno.estado === "inactivo") return;
 
-    // DB usa 'suspendido'. Para la UI mostramos 'pausado'.
     const next = alumno.estado === "activo" ? "suspendido" : "activo";
     const nextLabel = next === "suspendido" ? "pausado" : "activo";
 
-    // 1) Mostrar SIEMPRE aviso inmediato
     const idToast = toast.loading(`Cambiando estado a ${nextLabel}…`);
 
-    // 2) Optimistic UI
     const prev = alumno.estado;
     setAlumnos((prevList) =>
       prevList.map((a) => (a.id === alumno.id ? { ...a, estado: next } : a))
@@ -160,22 +139,37 @@ const Alumnos = () => {
       toast.success(`Estado cambiado a ${nextLabel}`, { id: idToast });
     } catch (error) {
       console.error(error);
-      // Revertir
       setAlumnos((prevList) =>
         prevList.map((a) => (a.id === alumno.id ? { ...a, estado: prev } : a))
       );
-      toast.error("❌ No se pudo guardar el cambio. Se revirtió el estado.", { id: idToast });
+      toast.error("❌ No se pudo guardar el cambio", { id: idToast });
     } finally {
       setSaving((s) => ({ ...s, [alumno.id]: false }));
     }
   };
 
-  const handleAnterior = () => {
-    if (page > 1) setPage(page - 1);
-  };
+  const handleAccionMasiva = async (accion, valor) => {
+    try {
+      if (accion === "eliminar") {
+        await Promise.all(seleccionados.map((id) => deleteAlumno(id)));
+        toast.success(`Se eliminaron ${seleccionados.length} alumnos 🗑️`);
+      } else {
+        await Promise.all(
+          seleccionados.map((id) =>
+            updateAlumno(id, { [accion]: valor })
+          )
+        );
+        toast.success(`Acción aplicada a ${seleccionados.length} alumnos ✅`);
+      }
 
-  const handleSiguiente = () => {
-    if (page < pages) setPage(page + 1);
+      await cargarAlumnos();
+      await cargarContadores();
+    } catch (error) {
+      console.error("Error acción masiva:", error);
+      toast.error("❌ Error en acción masiva");
+    } finally {
+      setAccionMasivaOpen(false);
+    }
   };
 
   const toggleSeleccion = (id) => {
@@ -192,19 +186,24 @@ const Alumnos = () => {
     }
   };
 
+  const handleAnterior = () => {
+    if (page > 1) setPage(page - 1);
+  };
+
+  const handleSiguiente = () => {
+    if (page < pages) setPage(page + 1);
+  };
+
   return (
     <div className="p-6">
-      {/* Toaster global */}
       <Toaster position="top-right" />
 
-      {/* 🔘 Botones toggle + Agregar */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-700">Alumnos</h1>
 
         <div className="flex items-center gap-3">
           <div className="inline-flex rounded-lg overflow-hidden border">
             <button
-              type="button"
               onClick={() => {
                 setPage(1);
                 setSoloMisAlumnos(false);
@@ -218,7 +217,6 @@ const Alumnos = () => {
               Todos ({totalAlumnos})
             </button>
             <button
-              type="button"
               onClick={() => {
                 setPage(1);
                 setSoloMisAlumnos(true);
@@ -254,7 +252,6 @@ const Alumnos = () => {
         </div>
       </div>
 
-      {/* 🔍 Filtro */}
       <div className="flex gap-2 mb-4">
         <select
           value={filtroCampo}
@@ -280,14 +277,15 @@ const Alumnos = () => {
         </div>
       </div>
 
-      {/* 📋 Tabla */}
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
         <thead>
           <tr className="bg-gray-200">
             <th className="p-3 text-left">
               <input
                 type="checkbox"
-                checked={seleccionados.length === alumnos.length && alumnos.length > 0}
+                checked={
+                  seleccionados.length === alumnos.length && alumnos.length > 0
+                }
                 onChange={toggleSeleccionTodos}
               />
             </th>
@@ -314,8 +312,14 @@ const Alumnos = () => {
               const isDisabled = alumno.estado === "inactivo" || isSaving;
 
               return (
-                <tr key={alumno.id} className="border-b hover:bg-gray-100">
-                  <td className="p-3">
+                <tr
+                  key={alumno.id}
+                  className="border-b hover:bg-gray-100 cursor-pointer"
+                  onClick={() =>
+                    navigate(`/dashboard-profesor/alumnos/${alumno.id}`)
+                  } // ✅ navegación al perfil
+                >
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={seleccionados.includes(alumno.id)}
@@ -329,20 +333,25 @@ const Alumnos = () => {
                   <td className="p-3">{formatDate(alumno.fecha_baja)}</td>
                   <td className="p-3">{alumno.estado_formacion || "N/A"}</td>
                   <td className="p-3">
-                    {alumno.curso_nombre || alumno.curso_matriculado || "N/A"}
+                    {alumno.curso_nombre ||
+                      alumno.curso_matriculado ||
+                      "N/A"}
                   </td>
-                  <td className="p-3 flex justify-center gap-3">
+                  <td
+                    className="p-3 flex justify-center gap-3"
+                    onClick={(e) => e.stopPropagation()} // ✅ evitar navegación
+                  >
                     <button
                       onClick={() => toggleEstado(alumno)}
                       disabled={isDisabled}
                       title={
                         alumno.estado === "inactivo"
-                          ? "Inactivo (no editable)"
+                          ? "Inactivo"
                           : alumno.estado === "suspendido"
                           ? "Activar alumno"
                           : "Pausar alumno"
                       }
-                      className={`transition-colors ${
+                      className={`${
                         alumno.estado === "inactivo"
                           ? "text-gray-300 cursor-not-allowed"
                           : alumno.estado === "suspendido"
@@ -350,7 +359,11 @@ const Alumnos = () => {
                           : "text-yellow-600 hover:text-yellow-700"
                       } ${isSaving ? "opacity-60" : ""}`}
                     >
-                      {alumno.estado === "suspendido" ? <Play size={18} /> : <Pause size={18} />}
+                      {alumno.estado === "suspendido" ? (
+                        <Play size={18} />
+                      ) : (
+                        <Pause size={18} />
+                      )}
                     </button>
 
                     <button
@@ -376,7 +389,6 @@ const Alumnos = () => {
         </tbody>
       </table>
 
-      {/* 🔄 Paginación */}
       {pages > 1 && (
         <div className="mt-6 flex justify-center gap-4 items-center text-sm">
           <button
@@ -387,8 +399,7 @@ const Alumnos = () => {
             ← Anterior
           </button>
           <span>
-            Página <strong>{page}</strong> de <strong>{pages}</strong> — Resultados:{" "}
-            {alumnos.length}
+            Página <strong>{page}</strong> de <strong>{pages}</strong>
           </span>
           <button
             onClick={handleSiguiente}

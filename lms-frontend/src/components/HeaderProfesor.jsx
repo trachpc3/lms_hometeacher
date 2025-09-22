@@ -42,7 +42,7 @@ const HeaderProfesor = ({
           <span className="hidden md:inline">Centro de Ayuda</span>
         </button>
 
-        {/* Volver al panel */}
+        {/* Volver al panel 
         <button
           onClick={() => navigate("/dashboard-profesor")}
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2"
@@ -50,11 +50,11 @@ const HeaderProfesor = ({
         >
           <Grid2X2 size={18} />
           <span className="hidden sm:inline">Volver al panel</span>
-        </button>
+        </button>  */}
 
         {/* Enviar aviso (modal) */}
         <button
-          onClick={() => (typeof onOpenAviso === "function" ? onOpenAviso() : navigate("/dashboard-profesor"))}
+          onClick={() => onOpenAviso && onOpenAviso()}         
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2"
           title="Enviar aviso"
         >

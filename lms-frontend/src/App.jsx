@@ -2,15 +2,15 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 
-// Layouts (carpeta correcta: src/layouts)
+// Layouts
 import Layout from "@/layouts/Layout";
 import ProfesorLayout from "@/layouts/ProfesorLayout";
 
-// Páginas
+// Páginas (contenido)
+import HomeContent from "./pages/HomeContent";          // 👈 NUEVO: solo contenido del curso
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
-import Home from "./pages/Home";
 import Pricing from "./pages/Pricing";
 import TestNivel from "./pages/TestNivel";
 import UnitDashboard from "./pages/UnitDashboard";
@@ -56,37 +56,40 @@ const MensajesGate = () => {
 
 const router = createBrowserRouter(
   [
+    // Públicas
     { path: "/", element: <Login /> },
     { path: "/pricing", element: <Pricing /> },
     { path: "/test-nivel", element: <TestNivel /> },
     { path: "/perfil", element: <ProfilePage /> },
 
+    // Rutas comunes
     { path: "/mensajes", element: <MensajesGate /> },
     { path: "/notificaciones", element: <Notificaciones /> },
 
-    // Alumno (usa Layout de src/layouts)
+    // ===== Alumno (usa Layout de src/layouts) =====
     {
       path: "/home",
-      element: <Layout />,
+      element: <Layout />,                       // pinta Header + Sidebar de alumno
       children: [
-        { index: true, element: <Home /> },
+        { index: true, element: <HomeContent /> },   // 👈 solo el contenido, sin duplicar layout
         { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
-    // Profesor (usa ProfesorLayout de src/layouts)
+    // ===== Profesor (usa ProfesorLayout) =====
     {
       path: "/dashboard-profesor",
-      element: <ProfesorLayout />,
+      element: <ProfesorLayout />,              // pinta Header + Sidebar de profesor
       children: [
         { index: true, element: <DashboardProfesor /> },
         { path: "alumnos", element: <Alumnos /> },
         { path: "renovaciones", element: <Renovaciones /> },
         { path: "mensajes", element: <Mensajes /> },
+        { path: "curso", element: <HomeContent /> },  // 👈 profesor “Entrar al curso” sin duplicar layout
       ],
     },
 
-    // Fundae (layout propio)
+    // ===== Fundae (layout propio) =====
     {
       path: "/fundae",
       element: <HomeFundae />,
@@ -97,7 +100,7 @@ const router = createBrowserRouter(
       ],
     },
 
-    // Unidades/actividades
+    // ===== Unidades/actividades =====
     { path: "/unidad/:unitId", element: <UnitDashboard /> },
     { path: "/unidad/:unitId/situation", element: <Situation /> },
     { path: "/unidad/:unitId/vocabulary", element: <Vocabulary /> },
@@ -109,11 +112,6 @@ const router = createBrowserRouter(
     { path: "/unidad/:unitId/speaking", element: <CharacterSelection /> },
     { path: "/speaking/:actividadId", element: <CharacterSelection /> },
     { path: "/unidad/:unitId/productiveSkills", element: <ProductiveSkillsPage /> },
-
-    // Auth extra
-    { path: "/olvide-mi-contraseña", element: <ForgotPassword /> },
-    { path: "/restablecer-contraseña", element: <ResetPassword /> },
-    { path: "/register", element: <Register /> },
 
     // 404
     {

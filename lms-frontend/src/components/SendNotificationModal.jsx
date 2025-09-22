@@ -1,4 +1,3 @@
-// src/components/SendNotificationModal.jsx
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -18,7 +17,7 @@ const tipos = [
 export default function SendNotificationModal({ open, onClose }) {
   const { refreshCounts } = useUnread();
 
-  const [audiencia, setAudiencia] = useState("misAlumnos"); // "misAlumnos" | "ids"
+  const [audiencia, setAudiencia] = useState("misAlumnos"); // "todos" | "misAlumnos" | "ids"
   const [idsTexto, setIdsTexto] = useState(""); // IDs separados por coma
   const [titulo, setTitulo] = useState("");
   const [cuerpo, setCuerpo] = useState("");
@@ -53,7 +52,17 @@ export default function SendNotificationModal({ open, onClose }) {
     try {
       setLoading(true);
 
-      if (audiencia === "misAlumnos") {
+      if (audiencia === "todos") {
+        await createNotification({
+          titulo: titulo.trim(),
+          cuerpo: cuerpo.trim(),
+          tipo,
+          linkUrl: linkUrl.trim() || null,
+          metadata: { priority: Number(priority) || 0 },
+          recipients: "all", // el backend debe interpretar esto como "todos los alumnos"
+        });
+        toast.success("Aviso enviado a todos los alumnos");
+      } else if (audiencia === "misAlumnos") {
         await broadcastToMyStudents({
           titulo: titulo.trim(),
           cuerpo: cuerpo.trim(),
@@ -63,7 +72,7 @@ export default function SendNotificationModal({ open, onClose }) {
         });
         toast.success("Aviso enviado a tus alumnos");
       } else {
-        // audiencia por IDs
+        // audiencia por IDs concretos
         const recipients = idsTexto
           .split(",")
           .map((s) => s.trim())
@@ -88,7 +97,6 @@ export default function SendNotificationModal({ open, onClose }) {
         toast.success(`Aviso enviado a ${recipients.length} usuarios`);
       }
 
-      // refresca badges de notificaciones
       refreshCounts();
       onClose?.();
     } catch (err) {
@@ -121,7 +129,17 @@ export default function SendNotificationModal({ open, onClose }) {
           {/* Audiencia */}
           <div>
             <label className="block text-sm font-medium mb-1">Audiencia</label>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="audiencia"
+                  value="todos"
+                  checked={audiencia === "todos"}
+                  onChange={() => setAudiencia("todos")}
+                />
+                <span>Todos los alumnos</span>
+              </label>
               <label className="inline-flex items-center gap-2">
                 <input
                   type="radio"
@@ -140,7 +158,7 @@ export default function SendNotificationModal({ open, onClose }) {
                   checked={audiencia === "ids"}
                   onChange={() => setAudiencia("ids")}
                 />
-                <span>IDs concretos</span>
+                <span>Alumnos concretos</span>
               </label>
             </div>
             {audiencia === "ids" && (

@@ -1,8 +1,17 @@
 import { API_BASE_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu } from "lucide-react";
+import {
+  LogIn,
+  Clock,
+  Camera,
+  User,
+  Flag,
+  BookOpen,
+  BarChart,
+  Menu,
+} from "lucide-react";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -12,8 +21,10 @@ import RechartStats from "../components/charts/RechartStats";
 import { getAvatarUrl } from "../utils/getAvatarUrl";
 import { saveUserToLocalStorage } from "../hooks/useUser";
 
-// Helpers reutilizables --------------------------------------------------
-const getToken = () => localStorage.getItem("token") || localStorage.getItem("accessToken");
+// Helpers ---------------------------------------------------------------
+const getToken = () =>
+  localStorage.getItem("token") || localStorage.getItem("accessToken");
+
 const authHeaders = () => ({
   Authorization: `Bearer ${getToken()}`,
 });
@@ -25,13 +36,19 @@ const safeFetch = async (url, opts = {}) => {
 
   let data;
   try {
-    data = contentType.includes("application/json") && raw ? JSON.parse(raw) : raw;
+    data =
+      contentType.includes("application/json") && raw
+        ? JSON.parse(raw)
+        : raw;
   } catch {
     data = raw;
   }
 
   if (!res.ok) {
-    const msg = (typeof data === "string" ? data : data?.error || data?.message) || `HTTP ${res.status}`;
+    const msg =
+      typeof data === "string"
+        ? data
+        : data?.error || data?.message || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
     err.data = data;
@@ -42,6 +59,7 @@ const safeFetch = async (url, opts = {}) => {
 };
 
 const ProfilePage = () => {
+  const { id: alumnoId } = useParams(); // 👈 id desde la URL
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -49,40 +67,52 @@ const ProfilePage = () => {
   const [stats, setStats] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [alumno, setAlumno] = useState(null); // 👈 alumno cargado por ID
 
   const { user, setUser, refreshUser } = useUser();
 
-  // Cargar estadísticas ---------------------------------------------------
+  const userData = alumno || user; // 👈 usamos este en vez de solo `user`
+
   useEffect(() => {
-    const loadStats = async () => {
+    const loadStatsAndAlumno = async () => {
       try {
-        if (!user?.id) return;
         const token = getToken();
         if (!token) throw new Error("No hay token. Inicia sesión.");
 
         setLoadingStats(true);
-        const data = await safeFetch(`${API_BASE_URL}/stats/${user.id}`, {
-          method: "GET",
-          headers: authHeaders(),
-        });
-        // Si tu backend devuelve { success, ... } mantén el condicional, pero admite ambos casos
-        if (data?.success) setStats(data);
-        else setStats(data);
+        const idToFetch = alumnoId || user?.id;
+
+        // 1. Si es un perfil ajeno, cargar datos del alumno
+        if (alumnoId) {
+          const alumnoData = await safeFetch(
+            `${API_BASE_URL}/users/${alumnoId}`,
+            { headers: authHeaders() }
+          );
+          setAlumno(alumnoData);
+        }
+
+        // 2. Cargar estadísticas
+        const statsData = await safeFetch(
+          `${API_BASE_URL}/stats/${idToFetch}`,
+          {
+            method: "GET",
+            headers: authHeaders(),
+          }
+        );
+        setStats(statsData?.success ? statsData : statsData);
       } catch (err) {
-        console.error("❌ Error cargando estadísticas:", err);
+        console.error("❌ Error cargando perfil o estadísticas:", err);
         if (err.status === 401) {
-          // Si el backend dice que falta token, forzamos logout suave u ofrecemos re-login
           toast.error("Sesión expirada. Vuelve a iniciar sesión.");
-          // Opcional: redirigir
-          // navigate("/login");
+          navigate("/");
         }
       } finally {
         setLoadingStats(false);
       }
     };
 
-    loadStats();
-  }, [user?.id]);
+    loadStatsAndAlumno();
+  }, [user?.id, alumnoId]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -97,7 +127,7 @@ const ProfilePage = () => {
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     const token = getToken();
-    if (!file || !token) return;
+    if (!file || !token || alumnoId) return; // 👈 evitar si viendo perfil ajeno
 
     const previewURL = URL.createObjectURL(file);
     setPreviewImage(previewURL);
@@ -117,15 +147,20 @@ const ProfilePage = () => {
       const data = raw ? JSON.parse(raw) : {};
       if (!res.ok) throw new Error(data?.message || "Error al subir imagen");
 
-      // ✅ Obtener usuario actualizado
       const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
         headers: authHeaders(),
         credentials: "include",
       });
-      const fullUser = await userRes.json();
-      if (!userRes.ok || !fullUser) throw new Error("Error al obtener el usuario actualizado");
 
-      const updatedUser = { ...fullUser, imagen: data.imagen, _updatedAt: Date.now() };
+      const fullUser = await userRes.json();
+      if (!userRes.ok || !fullUser)
+        throw new Error("Error al obtener el usuario actualizado");
+
+      const updatedUser = {
+        ...fullUser,
+        imagen: data.imagen,
+        _updatedAt: Date.now(),
+      };
       saveUserToLocalStorage(updatedUser);
       setUser(updatedUser);
 
@@ -138,32 +173,70 @@ const ProfilePage = () => {
 
   const statsCards = stats
     ? [
-        { title: "Tiempo de conexión", value: `${stats.horas_conectado}h`, desc: "Total desde el registro", icon: <Clock size={20} />, color: "bg-blue-500" },
-        { title: "Accesos", value: stats.total_logins, desc: "Total de inicios de sesión", icon: <LogIn size={20} />, color: "bg-green-500" },
-        { title: "Niveles completados", value: `${Math.round(stats.niveles_completados)} de 6`, desc: "Progreso general", icon: <Flag size={20} />, color: "bg-yellow-500" },
-        { title: "Unidades completadas", value: `${stats.unidades_completadas} de 144`, desc: "En el curso actual", icon: <BookOpen size={20} />, color: "bg-red-500" },
+        {
+          title: "Tiempo de conexión",
+          value: `${stats.horas_conectado}h`,
+          desc: "Total desde el registro",
+          icon: <Clock size={20} />,
+          color: "bg-blue-500",
+        },
+        {
+          title: "Accesos",
+          value: stats.total_logins,
+          desc: "Total de inicios de sesión",
+          icon: <LogIn size={20} />,
+          color: "bg-green-500",
+        },
+        {
+          title: "Niveles completados",
+          value: `${Math.round(stats.niveles_completados)} de 6`,
+          desc: "Progreso general",
+          icon: <Flag size={20} />,
+          color: "bg-yellow-500",
+        },
+        {
+          title: "Unidades completadas",
+          value: `${stats.unidades_completadas} de 144`,
+          desc: "En el curso actual",
+          icon: <BookOpen size={20} />,
+          color: "bg-red-500",
+        },
       ]
     : [];
 
   return (
     <div className="flex h-screen overflow-hidden relative">
-      <button className="absolute top-4 left-4 z-50 bg-white border border-gray-300 rounded-md p-2 md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+      <button
+        className="absolute top-4 left-4 z-50 bg-white border border-gray-300 rounded-md p-2 md:hidden"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      >
         <Menu size={24} />
       </button>
 
-      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} currentLevel={1} onLevelChange={() => {}} />
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        currentLevel={1}
+        onLevelChange={() => {}}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="sticky top-0 z-50 bg-gray-50 shadow-md border-b border-gray-300">
-          <Header key={user._updatedAt || user.imagen} startTutorial={() => {}} handleLogout={handleLogout} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+          <Header
+            key={user._updatedAt || user.imagen}
+            startTutorial={() => {}}
+            handleLogout={handleLogout}
+            toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {user.estado_formacion === "demo" && user.fecha_registro && (
-            <div className="md:col-span-2">
-              <CountdownBanner startTime={user.fecha_registro} />
-            </div>
-          )}
+          {userData?.estado_formacion === "demo" &&
+            userData?.fecha_registro && (
+              <div className="md:col-span-2">
+                <CountdownBanner startTime={userData.fecha_registro} />
+              </div>
+            )}
 
           <div className="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center text-center relative border">
             <div className="absolute -top-5 -left-5 w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg">
@@ -175,7 +248,9 @@ const ProfilePage = () => {
                 src={
                   previewImage ||
                   getAvatarUrl(
-                    user.imagen?.startsWith("/uploads/") ? user.imagen.split("/").pop() : user.imagen
+                    userData.imagen?.startsWith("/uploads/")
+                      ? userData.imagen.split("/").pop()
+                      : userData.imagen
                   )
                 }
                 alt="Foto de perfil"
@@ -183,34 +258,49 @@ const ProfilePage = () => {
               />
             </div>
 
-            <div className="mt-3 flex gap-3 flex-wrap justify-center">
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-              <button onClick={handleChangePhotoClick} className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow">
-                <Camera size={18} />
-                Cambiar foto
-              </button>
-              <button
-                onClick={() => navigate("/olvide-mi-contraseña", { state: { email: user.email, fromProfile: true } })}
-                className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow"
-              >
-                Cambiar contraseña
-              </button>
-            </div>
+            {!alumnoId && (
+              <div className="mt-3 flex gap-3 flex-wrap justify-center">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+                <button
+                  onClick={handleChangePhotoClick}
+                  className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow"
+                >
+                  <Camera size={18} />
+                  Cambiar foto
+                </button>
+                <button
+                  onClick={() =>
+                    navigate("/olvide-mi-contraseña", {
+                      state: { email: userData.email, fromProfile: true },
+                    })
+                  }
+                  className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow"
+                >
+                  Cambiar contraseña
+                </button>
+              </div>
+            )}
 
-            <h2 className="mt-4 text-xl font-bold">{user.nombre}</h2>
-            <p className="text-sm text-gray-600">{user.email}</p>
+            <h2 className="mt-4 text-xl font-bold">{userData.nombre}</h2>
+            <p className="text-sm text-gray-600">{userData.email}</p>
 
             <div className="mt-3 text-gray-700 text-sm flex justify-center items-center gap-3 flex-wrap">
               <p>
-                <strong>Curso:</strong> {user.curso}
+                <strong>Curso:</strong> {userData.curso}
               </p>
               <span className="text-gray-400">|</span>
               <p>
-                <strong>Profesor:</strong> {user.profesor}
+                <strong>Profesor:</strong> {userData.profesor}
               </p>
               <span className="text-gray-400">|</span>
               <p>
-                <strong>Móvil:</strong> {user.movil}
+                <strong>Móvil:</strong> {userData.movil}
               </p>
             </div>
           </div>
@@ -220,16 +310,27 @@ const ProfilePage = () => {
               <BarChart size={28} />
             </span>
 
-            {loadingStats && <p className="text-gray-600">Cargando estadísticas…</p>}
+            {loadingStats && (
+              <p className="text-gray-600">Cargando estadísticas…</p>
+            )}
 
             {stats && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-2">
                 {statsCards.map((card, index) => (
-                  <div key={index} className="relative bg-gray-50 rounded-lg p-4 shadow-md flex flex-col justify-between h-full border">
-                    <h3 className="text-lg font-semibold text-gray-700">{card.title}</h3>
-                    <p className="text-2xl font-bold mt-2 text-gray-900">{card.value}</p>
+                  <div
+                    key={index}
+                    className="relative bg-gray-50 rounded-lg p-4 shadow-md flex flex-col justify-between h-full border"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-700">
+                      {card.title}
+                    </h3>
+                    <p className="text-2xl font-bold mt-2 text-gray-900">
+                      {card.value}
+                    </p>
                     <p className="text-sm text-gray-500">{card.desc}</p>
-                    <span className={`absolute -top-3 -right-3 ${card.color} text-white rounded-full w-10 h-10 flex items-center justify-center shadow`}>
+                    <span
+                      className={`absolute -top-3 -right-3 ${card.color} text-white rounded-full w-10 h-10 flex items-center justify-center shadow`}
+                    >
                       {card.icon}
                     </span>
                   </div>
@@ -238,13 +339,14 @@ const ProfilePage = () => {
             )}
 
             {!loadingStats && !stats && (
-              <p className="text-sm text-gray-600 mt-2">Sin datos de estadísticas.</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Sin datos de estadísticas.
+              </p>
             )}
           </div>
 
           <div className="relative bg-white rounded-lg shadow-lg p-6 flex-1 min-h-[300px] md:col-span-2 border">
-            {/* ⚠️ Asegúrate de que RechartStats también envíe Authorization */}
-            <RechartStats userId={user.id} token={getToken()} />
+            <RechartStats userId={userData.id} token={getToken()} />
           </div>
         </div>
       </div>

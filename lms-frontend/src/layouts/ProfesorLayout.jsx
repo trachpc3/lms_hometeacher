@@ -37,7 +37,7 @@ export default function ProfesorLayout() {
         <div className="sticky top-0 z-30 bg-gray-50 shadow-md">
           <HeaderProfesor
             user={user}
-            toggleSidebar={() => setIsSidebarOpen(o => !o)}
+            toggleSidebar={() => setIsSidebarOpen((o) => !o)}
             handleLogout={handleLogout}
             unreadMsgs={unreadMessages}
             unreadNotifs={unreadNotifs}
@@ -51,11 +51,10 @@ export default function ProfesorLayout() {
       </div>
 
       {/* Modal de aviso */}
-      {isAvisoOpen && (
-        <AvisoModal
-          onClose={() => setIsAvisoOpen(false)}
-        />
-      )}
+      <AvisoModal
+        open={isAvisoOpen}
+        onClose={() => setIsAvisoOpen(false)}
+      />
     </div>
   );
 }

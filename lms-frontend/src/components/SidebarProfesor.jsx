@@ -16,7 +16,8 @@ const SidebarProfesor = ({ isSidebarOpen, setIsSidebarOpen }) => {
   const location = useLocation();
   const handleClose = () => setIsSidebarOpen && setIsSidebarOpen(false);
 
-  const insideCurso = location.pathname.startsWith("/home");
+  // 👇 Ahora comprobamos la ruta correcta del curso del profesor
+  const insideCurso = location.pathname.startsWith("/dashboard-profesor/curso");
 
   return (
     <aside
@@ -33,19 +34,50 @@ const SidebarProfesor = ({ isSidebarOpen, setIsSidebarOpen }) => {
 
         {/* Menú */}
         <nav className="space-y-3" role="menu">
-          <SidebarItem to="/dashboard-profesor" icon={LayoutDashboard} label="Inicio" onClick={handleClose} />
-          <SidebarItem to="/dashboard-profesor/alumnos" icon={Users} label="Mis Alumnos" onClick={handleClose} />
-          <SidebarItem to="/dashboard-profesor/renovaciones" icon={RefreshCw} label="Renovaciones" onClick={handleClose} />
-          <SidebarItem to="/dashboard-profesor/actividades" icon={ClipboardList} label="Actividades Pendientes" onClick={handleClose} />
-          <SidebarItem to="/dashboard-profesor/material" icon={BookOpen} label="Material de Clase" onClick={handleClose} />
-          <SidebarItem to="/dashboard-profesor/reportes" icon={BarChart} label="Reportes" onClick={handleClose} />
+          <SidebarItem
+            to="/dashboard-profesor"
+            icon={LayoutDashboard}
+            label="Inicio"
+            onClick={handleClose}
+            end   // 👈 que se active solo en la raíz exacta
+          />
+          <SidebarItem
+            to="/dashboard-profesor/alumnos"
+            icon={Users}
+            label="Mis Alumnos"
+            onClick={handleClose}
+          />
+          <SidebarItem
+            to="/dashboard-profesor/renovaciones"
+            icon={RefreshCw}
+            label="Renovaciones"
+            onClick={handleClose}
+          />
+          <SidebarItem
+            to="/dashboard-profesor/actividades"
+            icon={ClipboardList}
+            label="Actividades Pendientes"
+            onClick={handleClose}
+          />
+          <SidebarItem
+            to="/dashboard-profesor/material"
+            icon={BookOpen}
+            label="Material de Clase"
+            onClick={handleClose}
+          />
+          <SidebarItem
+            to="/dashboard-profesor/reportes"
+            icon={BarChart}
+            label="Reportes"
+            onClick={handleClose}
+          />
         </nav>
 
         {/* Acciones inferiores */}
         <div className="pt-4 border-t border-gray-200 mt-4 space-y-2">
           {!insideCurso ? (
             <SidebarItem
-              to="/home"
+              to="/dashboard-profesor/curso"   // 👈 NUEVO destino correcto
               icon={DoorOpen}
               label="Entrar al Curso"
               variant="primary"
@@ -66,7 +98,7 @@ const SidebarProfesor = ({ isSidebarOpen, setIsSidebarOpen }) => {
   );
 };
 
-function SidebarItem({ to, icon: Icon, label, onClick, variant }) {
+function SidebarItem({ to, icon: Icon, label, onClick, variant, end = false }) {
   const base =
     "w-full flex items-center gap-3 p-3 rounded-lg font-semibold transition shadow-sm";
   const variants = {
@@ -79,6 +111,7 @@ function SidebarItem({ to, icon: Icon, label, onClick, variant }) {
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onClick}
       role="menuitem"
       className={({ isActive }) =>

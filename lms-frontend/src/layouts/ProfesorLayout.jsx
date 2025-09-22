@@ -1,13 +1,14 @@
-// src/layouts/ProfesorLayout.jsx
 import { useState } from "react";
-import { Outlet } from "react-router-dom";              // 👈 IMPORTANTE
+import { Outlet } from "react-router-dom";
 import HeaderProfesor from "@/components/HeaderProfesor";
-import SidebarProfesor from "@/components/SidebarProfesor"; // 👈 usa el sidebar de profesor
+import SidebarProfesor from "@/components/SidebarProfesor";
 import { useUnread } from "@/hooks/useUnread";
 import { getUserFromLocalStorage } from "@/hooks/useUser";
+import AvisoModal from "@/components/AvisoModal"; // 👈 tu modal
 
 export default function ProfesorLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAvisoOpen, setIsAvisoOpen] = useState(false); // 👈 control modal
   const { unreadMessages, unreadNotifs } = useUnread();
   const user = getUserFromLocalStorage();
 
@@ -40,13 +41,21 @@ export default function ProfesorLayout() {
             handleLogout={handleLogout}
             unreadMsgs={unreadMessages}
             unreadNotifs={unreadNotifs}
+            onOpenAviso={() => setIsAvisoOpen(true)} // 👈 pasamos handler
           />
         </div>
 
         <main className="flex-1 overflow-auto p-6">
-          <Outlet />   {/* 👈 AQUI se renderizan las rutas hijas (HomeProfesor, Mensajes, etc.) */}
+          <Outlet />
         </main>
       </div>
+
+      {/* Modal de aviso */}
+      {isAvisoOpen && (
+        <AvisoModal
+          onClose={() => setIsAvisoOpen(false)}
+        />
+      )}
     </div>
   );
 }

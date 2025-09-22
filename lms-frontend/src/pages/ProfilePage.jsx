@@ -1,93 +1,95 @@
-// src/pages/ProfilePage.jsx
 import { API_BASE_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu } from "lucide-react";
+import {
+  LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu,
+} from "lucide-react";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
-import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";
 import { getAvatarUrl } from "../utils/getAvatarUrl";
 import { saveUserToLocalStorage } from "../hooks/useUser";
+import { useUser } from "../context/UserContext";
 
 const getToken = () => localStorage.getItem("token") || localStorage.getItem("accessToken");
-const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
-
-const safeFetch = async (url, opts = {}) => {
-  const res = await fetch(url, { credentials: "include", ...opts });
-  const raw = await res.text();
-  const contentType = res.headers.get("content-type") || "";
-
-  let data;
-  try {
-    data = contentType.includes("application/json") && raw ? JSON.parse(raw) : raw;
-  } catch {
-    data = raw;
-  }
-
-  if (!res.ok) {
-    const msg = (typeof data === "string" ? data : data?.error || data?.message) || `HTTP ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
-
-  return data;
-};
 
 const ProfilePage = () => {
+  const { id } = useParams(); // ← si existe, se accede al perfil de otro usuario
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const { id } = useParams(); // ID del alumno si es desde /dashboard-profesor/alumnos/:id
 
+  const { user: loggedInUser, setUser: setLoggedInUser, refreshUser } = useUser();
+
+  const [user, setUser] = useState(null); // ← puede ser alumno o logueado
   const [previewImage, setPreviewImage] = useState(null);
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [error, setError] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [profileUser, setProfileUser] = useState(null);
 
-  const { user, setUser, refreshUser } = useUser();
   const isOwnProfile = !id;
 
+  // Cargar datos del usuario (alumno o logueado)
   useEffect(() => {
-    const loadUserProfile = async () => {
+    const loadUser = async () => {
       try {
-        const userId = id || user?.id;
-        const data = await safeFetch(`${API_BASE_URL}/users/${userId}`, {
-          headers: authHeaders(),
+        const token = getToken();
+        if (!token) throw new Error("Token no encontrado");
+
+        const userId = id || loggedInUser?.id;
+        if (!userId) throw new Error("ID de usuario no válido");
+
+        const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
         });
-        setProfileUser(data);
-      } catch (error) {
-        console.error("Error cargando perfil:", error);
-        toast.error("No se pudo cargar el perfil");
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data?.message || "Error al obtener el perfil");
+
+        setUser(data);
+        if (isOwnProfile) {
+          saveUserToLocalStorage(data);
+          setLoggedInUser(data);
+        }
+      } catch (err) {
+        console.error("Error cargando perfil:", err);
+        setError(err.message || "Error al cargar perfil");
+      } finally {
+        setLoading(false);
       }
     };
-    loadUserProfile();
-  }, [id, user?.id]);
 
+    loadUser();
+  }, [id, loggedInUser?.id]);
+
+  // Cargar estadísticas
   useEffect(() => {
     const loadStats = async () => {
+      if (!user?.id) return;
       try {
-        const userId = id || user?.id;
         setLoadingStats(true);
-        const data = await safeFetch(`${API_BASE_URL}/stats/${userId}`, {
-          method: "GET",
-          headers: authHeaders(),
+        const res = await fetch(`${API_BASE_URL}/stats/${user.id}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          credentials: "include",
         });
-        setStats(data?.success ? data : data);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Error al cargar estadísticas");
+        setStats(data);
       } catch (err) {
-        console.error("❌ Error cargando estadísticas:", err);
-        if (err.status === 401) toast.error("Sesión expirada. Vuelve a iniciar sesión.");
+        console.error("Error cargando estadísticas:", err);
       } finally {
         setLoadingStats(false);
       }
     };
-    if (id || user?.id) loadStats();
-  }, [id, user?.id]);
+
+    loadStats();
+  }, [user?.id]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -102,46 +104,40 @@ const ProfilePage = () => {
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     const token = getToken();
-    if (!file || !token || !profileUser?.id) return;
+    if (!file || !token) return;
 
-    const previewURL = URL.createObjectURL(file);
-    setPreviewImage(previewURL);
+    setPreviewImage(URL.createObjectURL(file));
 
     const formData = new FormData();
     formData.append("imagen", file);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${profileUser.id}/photo`, {
+      const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
         method: "POST",
         body: formData,
-        headers: authHeaders(),
+        headers: { Authorization: `Bearer ${token}` },
         credentials: "include",
       });
 
-      const raw = await res.text();
-      const data = raw ? JSON.parse(raw) : {};
+      const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Error al subir imagen");
 
-      const userRes = await fetch(`${API_BASE_URL}/users/${profileUser.id}`, {
-        headers: authHeaders(),
-        credentials: "include",
-      });
-      const fullUser = await userRes.json();
-      if (!userRes.ok || !fullUser) throw new Error("Error al obtener el usuario actualizado");
-
-      const updatedUser = { ...fullUser, imagen: data.imagen, _updatedAt: Date.now() };
-
+      const updated = { ...user, imagen: data.imagen };
+      setUser(updated);
       if (isOwnProfile) {
-        saveUserToLocalStorage(updatedUser);
-        setUser(updatedUser);
+        saveUserToLocalStorage(updated);
+        setLoggedInUser(updated);
       }
-      setProfileUser(updatedUser);
+
       toast.success("Foto actualizada correctamente");
     } catch (error) {
-      console.error("❌ Error en actualización de foto:", error);
       toast.error(error.message || "No se pudo actualizar la foto");
     }
   };
+
+  if (loading) return <div className="p-6">Cargando perfil…</div>;
+  if (error) return <div className="p-6 text-red-600">❌ {error}</div>;
+  if (!user) return <div className="p-6">Perfil no encontrado</div>;
 
   const statsCards = stats
     ? [
@@ -152,29 +148,23 @@ const ProfilePage = () => {
       ]
     : [];
 
-  if (!profileUser) return <div className="p-6">Cargando perfil…</div>;
-
   return (
     <div className="flex h-screen overflow-hidden relative">
-      {isOwnProfile && (
-        <button className="absolute top-4 left-4 z-50 bg-white border border-gray-300 rounded-md p-2 md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          <Menu size={24} />
-        </button>
-      )}
+      <button className="absolute top-4 left-4 z-50 bg-white border border-gray-300 rounded-md p-2 md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+        <Menu size={24} />
+      </button>
 
-      {isOwnProfile && <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} currentLevel={1} onLevelChange={() => {}} />}
+      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} currentLevel={1} onLevelChange={() => {}} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {isOwnProfile && (
-          <div className="sticky top-0 z-50 bg-gray-50 shadow-md border-b border-gray-300">
-            <Header key={user._updatedAt || user.imagen} startTutorial={() => {}} handleLogout={handleLogout} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-          </div>
-        )}
+        <div className="sticky top-0 z-50 bg-gray-50 shadow-md border-b border-gray-300">
+          <Header key={user._updatedAt || user.imagen} startTutorial={() => {}} handleLogout={handleLogout} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        </div>
 
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {profileUser.estado_formacion === "demo" && profileUser.fecha_registro && (
+          {user.estado_formacion === "demo" && user.fecha_registro && (
             <div className="md:col-span-2">
-              <CountdownBanner startTime={profileUser.fecha_registro} />
+              <CountdownBanner startTime={user.fecha_registro} />
             </div>
           )}
 
@@ -185,40 +175,43 @@ const ProfilePage = () => {
 
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
               <img
-                src={previewImage || getAvatarUrl(profileUser.imagen)}
+                src={
+                  previewImage ||
+                  getAvatarUrl(
+                    user.imagen?.startsWith("/uploads/") ? user.imagen.split("/").pop() : user.imagen
+                  )
+                }
                 alt="Foto de perfil"
                 className="w-full h-full object-cover"
               />
             </div>
 
-            {isOwnProfile && (
-              <div className="mt-3 flex gap-3 flex-wrap justify-center">
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                <button onClick={handleChangePhotoClick} className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow">
-                  <Camera size={18} />
-                  Cambiar foto
-                </button>
-                <button onClick={() => navigate("/olvide-mi-contraseña", { state: { email: profileUser.email, fromProfile: true } })} className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow">
-                  Cambiar contraseña
-                </button>
-              </div>
-            )}
+            <div className="mt-3 flex gap-3 flex-wrap justify-center">
+              {isOwnProfile && (
+                <>
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                  <button onClick={handleChangePhotoClick} className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow">
+                    <Camera size={18} /> Cambiar foto
+                  </button>
+                  <button
+                    onClick={() => navigate("/olvide-mi-contraseña", { state: { email: user.email, fromProfile: true } })}
+                    className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow"
+                  >
+                    Cambiar contraseña
+                  </button>
+                </>
+              )}
+            </div>
 
-            <h2 className="mt-4 text-xl font-bold">{profileUser.nombre}</h2>
-            <p className="text-sm text-gray-600">{profileUser.email}</p>
+            <h2 className="mt-4 text-xl font-bold">{user.nombre}</h2>
+            <p className="text-sm text-gray-600">{user.email}</p>
 
             <div className="mt-3 text-gray-700 text-sm flex justify-center items-center gap-3 flex-wrap">
-              <p>
-                <strong>Curso:</strong> {profileUser.curso}
-              </p>
+              <p><strong>Curso:</strong> {user.curso}</p>
               <span className="text-gray-400">|</span>
-              <p>
-                <strong>Profesor:</strong> {profileUser.profesor}
-              </p>
+              <p><strong>Profesor:</strong> {user.profesor}</p>
               <span className="text-gray-400">|</span>
-              <p>
-                <strong>Móvil:</strong> {profileUser.movil}
-              </p>
+              <p><strong>Móvil:</strong> {user.movil}</p>
             </div>
           </div>
 
@@ -244,11 +237,13 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {!loadingStats && !stats && <p className="text-sm text-gray-600 mt-2">Sin datos de estadísticas.</p>}
+            {!loadingStats && !stats && (
+              <p className="text-sm text-gray-600 mt-2">Sin datos de estadísticas.</p>
+            )}
           </div>
 
           <div className="relative bg-white rounded-lg shadow-lg p-6 flex-1 min-h-[300px] md:col-span-2 border">
-            <RechartStats userId={profileUser.id} token={getToken()} />
+            <RechartStats userId={user.id} token={getToken()} />
           </div>
         </div>
       </div>

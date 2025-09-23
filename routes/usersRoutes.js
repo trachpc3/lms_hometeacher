@@ -91,7 +91,7 @@ router.get("/:id", verifyToken, (req, res) => {
   console.log(`🔍 Buscando usuario con ID: ${userId}`);
 
   db.query(
-    "SELECT id, nombre, email, imagen, curso, profesor, movil, estado_formacion, fecha_registro FROM usuarios WHERE id = ?",
+    "SELECT id, nombre, email, imagen, curso_matriculado AS curso, profesor_asignado AS profesor, telefono, estado_formacion, fecha_registro FROM usuarios WHERE id = ?",
     [userId],
     (err, results) => {
       console.log("✅ Resultado recibido desde la base de datos");

@@ -5,7 +5,7 @@ import { Lock, Unlock, Menu } from "lucide-react";
 import toast from "react-hot-toast";
 
 import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
+import Header from "@/components/HeaderAlumno";
 import SidebarProfesor from "@/components/SidebarProfesor";
 import HeaderProfesor from "@/components/HeaderProfesor";
 import CountdownBanner from "@/components/ui/CountdownBanner";

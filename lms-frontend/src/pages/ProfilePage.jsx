@@ -2,9 +2,7 @@ import { API_BASE_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import {
-  LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu,
-} from "lucide-react";
+import { LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu } from "lucide-react";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -15,25 +13,47 @@ import { saveUserToLocalStorage } from "../hooks/useUser";
 import { useUser } from "../context/UserContext";
 
 const getToken = () => localStorage.getItem("token") || localStorage.getItem("accessToken");
+const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
+
+const safeFetch = async (url, opts = {}) => {
+  const res = await fetch(url, { credentials: "include", ...opts });
+  const raw = await res.text();
+  const contentType = res.headers.get("content-type") || "";
+
+  let data;
+  try {
+    data = contentType.includes("application/json") && raw ? JSON.parse(raw) : raw;
+  } catch {
+    data = raw;
+  }
+
+  if (!res.ok) {
+    const msg = (typeof data === "string" ? data : data?.error || data?.message) || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+
+  return data;
+};
 
 const ProfilePage = () => {
-  const { id } = useParams(); // ← si existe, se accede al perfil de otro usuario
+  const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
   const { user: loggedInUser, setUser: setLoggedInUser, refreshUser } = useUser();
 
-  const [user, setUser] = useState(null); // ← puede ser alumno o logueado
+  const [user, setUser] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [error, setError] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const isOwnProfile = !id;
 
-  // Cargar datos del usuario (alumno o logueado)
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -43,23 +63,19 @@ const ProfilePage = () => {
         const userId = id || loggedInUser?.id;
         if (!userId) throw new Error("ID de usuario no válido");
 
-        const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include",
+        const data = await safeFetch(`${API_BASE_URL}/users/${userId}`, {
+          headers: authHeaders(),
         });
 
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data?.message || "Error al obtener el perfil");
-
         setUser(data);
+
         if (isOwnProfile) {
           saveUserToLocalStorage(data);
           setLoggedInUser(data);
         }
       } catch (err) {
         console.error("Error cargando perfil:", err);
-        setError(err.message || "Error al cargar perfil");
+        toast.error(err.message || "Error al cargar el perfil");
       } finally {
         setLoading(false);
       }
@@ -68,18 +84,14 @@ const ProfilePage = () => {
     loadUser();
   }, [id, loggedInUser?.id]);
 
-  // Cargar estadísticas
   useEffect(() => {
     const loadStats = async () => {
       if (!user?.id) return;
       try {
         setLoadingStats(true);
-        const res = await fetch(`${API_BASE_URL}/stats/${user.id}`, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-          credentials: "include",
+        const data = await safeFetch(`${API_BASE_URL}/stats/${user.id}`, {
+          headers: authHeaders(),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || "Error al cargar estadísticas");
         setStats(data);
       } catch (err) {
         console.error("Error cargando estadísticas:", err);
@@ -115,7 +127,7 @@ const ProfilePage = () => {
       const res = await fetch(`${API_BASE_URL}/users/${user.id}/photo`, {
         method: "POST",
         body: formData,
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(),
         credentials: "include",
       });
 
@@ -136,8 +148,7 @@ const ProfilePage = () => {
   };
 
   if (loading) return <div className="p-6">Cargando perfil…</div>;
-  if (error) return <div className="p-6 text-red-600">❌ {error}</div>;
-  if (!user) return <div className="p-6">Perfil no encontrado</div>;
+  if (!user) return <div className="p-6 text-red-600">❌ Perfil no encontrado</div>;
 
   const statsCards = stats
     ? [
@@ -211,7 +222,7 @@ const ProfilePage = () => {
               <span className="text-gray-400">|</span>
               <p><strong>Profesor:</strong> {user.profesor}</p>
               <span className="text-gray-400">|</span>
-              <p><strong>Móvil:</strong> {user.movil}</p>
+              <p><strong>Móvil:</strong> {user.telefono || user.movil}</p>
             </div>
           </div>
 

@@ -7,7 +7,7 @@ import Layout from "@/layouts/Layout";
 import ProfesorLayout from "@/layouts/ProfesorLayout";
 
 // Páginas (contenido)
-import HomeContent from "./components/HomeContent";          // 👈 NUEVO: solo contenido del curso
+import HomeContent from "./components/HomeContent";          // 👈 solo contenido del curso
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
@@ -22,12 +22,15 @@ import Listening from "./pages/Listening";
 import Writing from "./pages/Writing";
 import Assessment from "./pages/Assessment";
 import CharacterSelection from "./pages/Speaking";
-import ProfilePage from "./pages/ProfilePage";
 import Renovaciones from "./pages/Renovaciones";
 import FundaeList from "./pages/FundaeList";
 import HomeFundae from "./pages/HomeFundae";
 import FundaeUsers from "./pages/FundaeUsers";
 import ProductiveSkillsPage from "./pages/ProductiveSkills";
+
+// Perfiles separados
+import ProfileAlumno from "./pages/ProfileAlumno";
+import ProfileProfesor from "./pages/ProfileProfesor";
 
 // Auth/registro
 import ForgotPassword from "./pages/ForgotPassword";
@@ -54,13 +57,26 @@ const MensajesGate = () => {
   return <Navigate to={to} replace />;
 };
 
+// Redirección inteligente para /perfil según rol
+const ProfileRouter = () => {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const role = (user?.rol || user?.role || user?.tipo || "").toString().toLowerCase();
+  const isTeacher = ["profesor", "teacher", "docente"].includes(role);
+  const to = isTeacher ? "/perfil/profesor" : "/perfil/alumno";
+  return <Navigate to={to} replace />;
+};
+
 const router = createBrowserRouter(
   [
     // Públicas
     { path: "/", element: <Login /> },
     { path: "/pricing", element: <Pricing /> },
     { path: "/test-nivel", element: <TestNivel /> },
-    { path: "/perfil", element: <ProfilePage /> },
+
+    // Perfil (rutas nuevas + fallback por rol)
+    { path: "/perfil", element: <ProfileRouter /> },
+    { path: "/perfil/alumno", element: <ProfileAlumno /> },
+    { path: "/perfil/profesor", element: <ProfileProfesor /> },
 
     // Rutas comunes
     { path: "/mensajes", element: <MensajesGate /> },
@@ -69,26 +85,26 @@ const router = createBrowserRouter(
     // ===== Alumno (usa Layout de src/layouts) =====
     {
       path: "/home",
-      element: <Layout />,                       // pinta Header + Sidebar de alumno
+      element: <Layout />, // pinta Header + Sidebar de alumno
       children: [
-        { index: true, element: <HomeContent /> },   // 👈 solo el contenido, sin duplicar layout
+        { index: true, element: <HomeContent /> }, // 👈 solo el contenido, sin duplicar layout
         { path: "mensajes", element: <Mensajes /> },
       ],
     },
 
     // ===== Profesor (usa ProfesorLayout) =====
-   {
-  path: "/dashboard-profesor",
-  element: <ProfesorLayout />,
-  children: [
-    { index: true, element: <DashboardProfesor /> },
-    { path: "alumnos", element: <Alumnos /> },
-    { path: "alumnos/:id", element: <ProfilePage /> }, // ✅ ESTA ES LA NUEVA LÍNEA
-    { path: "renovaciones", element: <Renovaciones /> },
-    { path: "mensajes", element: <Mensajes /> },
-    { path: "curso", element: <HomeContent /> },
-  ],
-},
+    {
+      path: "/dashboard-profesor",
+      element: <ProfesorLayout />,
+      children: [
+        { index: true, element: <DashboardProfesor /> },
+        { path: "alumnos", element: <Alumnos /> },
+        { path: "alumnos/:id", element: <ProfileAlumno /> }, // ver perfil de un alumno desde el panel del profe
+        { path: "renovaciones", element: <Renovaciones /> },
+        { path: "mensajes", element: <Mensajes /> },
+        { path: "curso", element: <HomeContent /> },
+      ],
+    },
 
     // ===== Fundae (layout propio) =====
     {

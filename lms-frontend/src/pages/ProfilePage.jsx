@@ -1,19 +1,22 @@
 import { API_BASE_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu } from "lucide-react";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";
 import { getAvatarUrl } from "../utils/getAvatarUrl";
 import { saveUserToLocalStorage } from "../hooks/useUser";
-import { useUser } from "../context/UserContext";
 
+// Helpers reutilizables --------------------------------------------------
 const getToken = () => localStorage.getItem("token") || localStorage.getItem("accessToken");
-const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
+const authHeaders = () => ({
+  Authorization: `Bearer ${getToken()}`,
+});
 
 const safeFetch = async (url, opts = {}) => {
   const res = await fetch(url, { credentials: "include", ...opts });
@@ -39,62 +42,40 @@ const safeFetch = async (url, opts = {}) => {
 };
 
 const ProfilePage = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  const { user: loggedInUser, setUser: setLoggedInUser, refreshUser } = useUser();
-
-  const [user, setUser] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingStats, setLoadingStats] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
 
-  const isOwnProfile = !id;
+  const { user, setUser, refreshUser } = useUser();
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const token = getToken();
-        if (!token) throw new Error("Token no encontrado");
-
-        const userId = id || loggedInUser?.id;
-        if (!userId) throw new Error("ID de usuario no válido");
-
-        const data = await safeFetch(`${API_BASE_URL}/users/${userId}`, {
-          headers: authHeaders(),
-        });
-
-        setUser(data);
-
-        if (isOwnProfile) {
-          saveUserToLocalStorage(data);
-          setLoggedInUser(data);
-        }
-      } catch (err) {
-        console.error("Error cargando perfil:", err);
-        toast.error(err.message || "Error al cargar el perfil");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUser();
-  }, [id, loggedInUser?.id]);
-
+  // Cargar estadísticas ---------------------------------------------------
   useEffect(() => {
     const loadStats = async () => {
-      if (!user?.id) return;
       try {
+        if (!user?.id) return;
+        const token = getToken();
+        if (!token) throw new Error("No hay token. Inicia sesión.");
+
         setLoadingStats(true);
         const data = await safeFetch(`${API_BASE_URL}/stats/${user.id}`, {
+          method: "GET",
           headers: authHeaders(),
         });
-        setStats(data);
+        // Si tu backend devuelve { success, ... } mantén el condicional, pero admite ambos casos
+        if (data?.success) setStats(data);
+        else setStats(data);
       } catch (err) {
-        console.error("Error cargando estadísticas:", err);
+        console.error("❌ Error cargando estadísticas:", err);
+        if (err.status === 401) {
+          // Si el backend dice que falta token, forzamos logout suave u ofrecemos re-login
+          toast.error("Sesión expirada. Vuelve a iniciar sesión.");
+          // Opcional: redirigir
+          // navigate("/login");
+        }
       } finally {
         setLoadingStats(false);
       }
@@ -118,7 +99,8 @@ const ProfilePage = () => {
     const token = getToken();
     if (!file || !token) return;
 
-    setPreviewImage(URL.createObjectURL(file));
+    const previewURL = URL.createObjectURL(file);
+    setPreviewImage(previewURL);
 
     const formData = new FormData();
     formData.append("imagen", file);
@@ -131,24 +113,28 @@ const ProfilePage = () => {
         credentials: "include",
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      const data = raw ? JSON.parse(raw) : {};
       if (!res.ok) throw new Error(data?.message || "Error al subir imagen");
 
-      const updated = { ...user, imagen: data.imagen };
-      setUser(updated);
-      if (isOwnProfile) {
-        saveUserToLocalStorage(updated);
-        setLoggedInUser(updated);
-      }
+      // ✅ Obtener usuario actualizado
+      const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+        headers: authHeaders(),
+        credentials: "include",
+      });
+      const fullUser = await userRes.json();
+      if (!userRes.ok || !fullUser) throw new Error("Error al obtener el usuario actualizado");
+
+      const updatedUser = { ...fullUser, imagen: data.imagen, _updatedAt: Date.now() };
+      saveUserToLocalStorage(updatedUser);
+      setUser(updatedUser);
 
       toast.success("Foto actualizada correctamente");
     } catch (error) {
+      console.error("❌ Error en actualización de foto:", error);
       toast.error(error.message || "No se pudo actualizar la foto");
     }
   };
-
-  if (loading) return <div className="p-6">Cargando perfil…</div>;
-  if (!user) return <div className="p-6 text-red-600">❌ Perfil no encontrado</div>;
 
   const statsCards = stats
     ? [
@@ -198,31 +184,34 @@ const ProfilePage = () => {
             </div>
 
             <div className="mt-3 flex gap-3 flex-wrap justify-center">
-              {isOwnProfile && (
-                <>
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                  <button onClick={handleChangePhotoClick} className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow">
-                    <Camera size={18} /> Cambiar foto
-                  </button>
-                  <button
-                    onClick={() => navigate("/olvide-mi-contraseña", { state: { email: user.email, fromProfile: true } })}
-                    className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow"
-                  >
-                    Cambiar contraseña
-                  </button>
-                </>
-              )}
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+              <button onClick={handleChangePhotoClick} className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow">
+                <Camera size={18} />
+                Cambiar foto
+              </button>
+              <button
+                onClick={() => navigate("/olvide-mi-contraseña", { state: { email: user.email, fromProfile: true } })}
+                className="bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg flex items-center gap-2 shadow"
+              >
+                Cambiar contraseña
+              </button>
             </div>
 
             <h2 className="mt-4 text-xl font-bold">{user.nombre}</h2>
             <p className="text-sm text-gray-600">{user.email}</p>
 
             <div className="mt-3 text-gray-700 text-sm flex justify-center items-center gap-3 flex-wrap">
-              <p><strong>Curso:</strong> {user.curso}</p>
+              <p>
+                <strong>Curso:</strong> {user.curso}
+              </p>
               <span className="text-gray-400">|</span>
-              <p><strong>Profesor:</strong> {user.profesor}</p>
+              <p>
+                <strong>Profesor:</strong> {user.profesor}
+              </p>
               <span className="text-gray-400">|</span>
-              <p><strong>Móvil:</strong> {user.telefono || user.movil}</p>
+              <p>
+                <strong>Móvil:</strong> {user.movil}
+              </p>
             </div>
           </div>
 
@@ -254,6 +243,7 @@ const ProfilePage = () => {
           </div>
 
           <div className="relative bg-white rounded-lg shadow-lg p-6 flex-1 min-h-[300px] md:col-span-2 border">
+            {/* ⚠️ Asegúrate de que RechartStats también envíe Authorization */}
             <RechartStats userId={user.id} token={getToken()} />
           </div>
         </div>

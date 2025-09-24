@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { LogIn, Clock, Camera, User, Flag, BookOpen, BarChart, Menu } from "lucide-react";
 
 import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
+import Header from "../components/HeaderAlumno";
 import { useUser } from "../context/UserContext";
 import CountdownBanner from "../components/ui/CountdownBanner";
 import RechartStats from "../components/charts/RechartStats";

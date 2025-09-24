@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";   // 👈 IMPORTANTE
 import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
+import Header from "../components/HeaderAlumno";
 import { getUserFromLocalStorage } from "../hooks/useUser";
 import { useUnread } from "@/hooks/useUnread"; // 👈 NUEVO
 

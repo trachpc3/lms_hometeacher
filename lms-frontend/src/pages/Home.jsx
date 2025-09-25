@@ -162,8 +162,10 @@ const HomePage = () => {
         <main ref={unitsGridRef} className="flex-1 p-6 overflow-y-auto bg-gray-100">
           {showDashboard ? (
             <>
-              {/* Banner demo SOLO para alumno 
-              {!isProfesor && user.estado_formacion === "demo" && <CountdownBanner />}  */}
+              {/* Banner demo SOLO para alumno */}
+{/* 
+{!isProfesor && user.estado_formacion === "demo" && <CountdownBanner />} 
+*/}
 
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-700">

@@ -98,8 +98,11 @@ const Register = () => {
               ¡Registro exitoso, {nombre}!
             </p>
             <p className="text-sm text-gray-700 mt-2">
+  ✅ Bienvenid@, estás conectad@ como <strong>alumn@ de prueba</strong>.
+</p>
+            {/* <p className="text-sm text-gray-700 mt-2">
               🎁 Si realizas la matrícula en las próximas 24 horas, obtendrás un{" "}
-              <strong>50% de descuento</strong>.
+              <strong>50% de descuento</strong>. */}
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">

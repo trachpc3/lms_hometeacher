@@ -9,31 +9,22 @@ import TutorialModal from '../components/TutorialModal';
 const Speaking = () => {
   const { unitId } = useParams();
 
+  // ✅ estados que faltaban
   const [speakingItems, setSpeakingItems] = useState([]);
   const [actividadId, setActividadId] = useState(null);
-  const [meta, setMeta] = useState(null);
-
   const [error, setError] = useState(null);
-  const [loadingMeta, setLoadingMeta] = useState(true);
-  const [loadingItems, setLoadingItems] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
-  // 🔁 Cargar metadatos de la actividad
   useEffect(() => {
-    const loadSpeakingMeta = async () => {
-      setLoadingMeta(true);
-      setError(null);
-
-      const token = (localStorage.getItem('token') || localStorage.getItem('accessToken') || '').trim();
-
-      if (!token) {
-        setError('No se encontró token válido. Inicia sesión nuevamente.');
-        setLoadingMeta(false);
-        return;
-      }
-
+    const loadSpeaking = async () => {
       try {
-        console.log("🔑 TOKEN usado:", token);
+        setLoading(true);
+        setError(null);
+
+        const token =
+          localStorage.getItem('token') || localStorage.getItem('accessToken');
+        if (!token) throw new Error('No hay token. Inicia sesión.');
 
         const res = await fetch(
           `${API_BASE_URL}/actividades/unidad/${unitId}/speaking`,
@@ -47,112 +38,25 @@ const Speaking = () => {
           }
         );
 
+        // Intentamos leer como texto por si el backend devuelve HTML en errores
         const raw = await res.text();
-        console.log("📡 Respuesta cruda:", raw);
+        if (!res.ok) throw new Error(`Error del servidor (${res.status}): ${raw}`);
 
-        if (!res.ok) {
-          throw new Error(`Error ${res.status}: ${raw || 'sin cuerpo'}`);
-        }
-
-        const json = raw ? JSON.parse(raw) : null;
-
-        // ✅ Puede venir como array u objeto
-        let actividad = Array.isArray(json) ? json[0] : json;
-
-        console.log("🧠 Actividad recibida:", actividad);
-
-        if (!actividad?.id) {
-          throw new Error('No hay actividad Speaking para esta unidad.');
-        }
-
-        setMeta(actividad);
-        setActividadId(actividad.id);
+        const data = raw ? JSON.parse(raw) : [];
+        const items = Array.isArray(data) ? data : [];
+        setSpeakingItems(items);
+        // ✅ si viene un array, elegimos la primera actividad por defecto
+        setActividadId(items[0]?.id ?? null);
       } catch (err) {
-        console.error('❌ Error cargando Speaking por unidad:', err);
+        console.error('❌ Error cargando actividad Speaking:', err);
         setError(err.message || 'Error desconocido');
       } finally {
-        setLoadingMeta(false);
+        setLoading(false);
       }
     };
 
-    loadSpeakingMeta();
+    loadSpeaking();
   }, [unitId]);
-
-  // 🔁 Cargar ítems si no los trae el componente RolePlay
-  useEffect(() => {
-    const loadItems = async () => {
-      if (!actividadId) return;
-
-      setLoadingItems(true);
-
-      const token = (localStorage.getItem('token') || localStorage.getItem('accessToken') || '').trim();
-      if (!token) {
-        console.warn('⚠️ No hay token al cargar ítems de speaking');
-        setLoadingItems(false);
-        return;
-      }
-
-      const tryFetch = async (path) => {
-        try {
-          const res = await fetch(`${API_BASE_URL}${path}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: 'include',
-          });
-
-          const raw = await res.text();
-
-          if (!res.ok) {
-            throw new Error(`Error del servidor (${res.status}): ${raw}`);
-          }
-
-          return raw ? JSON.parse(raw) : null;
-        } catch (err) {
-          console.error(`❌ Error al obtener diálogo:`, err.message);
-          return null;
-        }
-      };
-
-      const candidates = [
-        `/speaking/${actividadId}`,
-        `/speaking/${actividadId}/items`,
-      ];
-
-      let found = null;
-
-      for (const path of candidates) {
-        // eslint-disable-next-line no-await-in-loop
-        const data = await tryFetch(path);
-
-        if (data) {
-          const list = Array.isArray(data)
-            ? data
-            : Array.isArray(data?.items)
-            ? data.items
-            : Array.isArray(data?.data)
-            ? data.data
-            : [];
-
-          if (list.length) {
-            found = list;
-            break;
-          }
-        }
-      }
-
-      console.log("📦 Ítems de speaking cargados:", found);
-
-      setSpeakingItems(found || []);
-      setLoadingItems(false);
-    };
-
-    loadItems();
-  }, [actividadId]);
-
-  const loading = loadingMeta || loadingItems;
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
@@ -189,9 +93,7 @@ const Speaking = () => {
 
       <div className="flex-1 flex items-center justify-center px-4 py-6">
         <div className="bg-white shadow-lg rounded-xl p-6 max-w-4xl w-full border">
-          {loading && (
-            <p className="text-center text-gray-500">Cargando actividad...</p>
-          )}
+          {loading && <p className="text-center text-gray-500">Cargando actividad...</p>}
 
           {!loading && error && (
             <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700">
@@ -205,7 +107,7 @@ const Speaking = () => {
           )}
 
           {!loading && !error && actividadId && (
-            <RolePlay actividadId={actividadId} items={speakingItems} meta={meta} />
+            <RolePlay actividadId={actividadId} items={speakingItems} />
           )}
         </div>
       </div>

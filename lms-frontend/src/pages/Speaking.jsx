@@ -9,17 +9,19 @@ import TutorialModal from '../components/TutorialModal';
 const Speaking = () => {
   const { unitId } = useParams();
 
-  // ✅ estados que faltaban
   const [speakingItems, setSpeakingItems] = useState([]);
   const [actividadId, setActividadId] = useState(null);
+  const [meta, setMeta] = useState(null);
+
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingMeta, setLoadingMeta] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   useEffect(() => {
-    const loadSpeaking = async () => {
+    const loadSpeakingMeta = async () => {
       try {
-        setLoading(true);
+        setLoadingMeta(true);
         setError(null);
 
         const token =
@@ -38,25 +40,107 @@ const Speaking = () => {
           }
         );
 
-        // Intentamos leer como texto por si el backend devuelve HTML en errores
         const raw = await res.text();
-        if (!res.ok) throw new Error(`Error del servidor (${res.status}): ${raw}`);
+        if (!res.ok) throw new Error(`Error ${res.status}: ${raw || 'sin cuerpo'}`);
 
-        const data = raw ? JSON.parse(raw) : [];
-        const items = Array.isArray(data) ? data : [];
-        setSpeakingItems(items);
-        // ✅ si viene un array, elegimos la primera actividad por defecto
-        setActividadId(items[0]?.id ?? null);
+        const json = raw ? JSON.parse(raw) : null;
+
+        // ✅ Puede venir objeto o array
+        let actividad = null;
+        if (Array.isArray(json)) {
+          actividad = json[0] || null;
+        } else if (json && typeof json === 'object') {
+          actividad = json;
+        }
+
+        if (!actividad?.id) {
+          throw new Error('No hay actividad Speaking para esta unidad.');
+        }
+
+        setMeta(actividad);
+        setActividadId(actividad.id);
       } catch (err) {
-        console.error('❌ Error cargando actividad Speaking:', err);
+        console.error('❌ Error cargando Speaking por unidad:', err);
         setError(err.message || 'Error desconocido');
       } finally {
-        setLoading(false);
+        setLoadingMeta(false);
       }
     };
 
-    loadSpeaking();
+    loadSpeakingMeta();
   }, [unitId]);
+
+  // (Opcional) intenta traer los ítems de la actividad si RolePlay no los carga solo
+  useEffect(() => {
+    const loadItems = async () => {
+      if (!actividadId) return;
+
+      try {
+        setLoadingItems(true);
+
+        const token =
+          localStorage.getItem('token') || localStorage.getItem('accessToken');
+        if (!token) return;
+
+        // probamos varias rutas típicas
+        const tryFetch = async (path) => {
+          const r = await fetch(`${API_BASE_URL}${path}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          });
+          if (!r.ok) return null;
+          const t = await r.text();
+          if (!t) return null;
+          try {
+            return JSON.parse(t);
+          } catch {
+            return null;
+          }
+        };
+
+        const candidates = [
+          `/speaking/${actividadId}`,        // puede devolver array o {items:[...]}
+          `/speaking/${actividadId}/items`,  // puede devolver array o {items:[...]}
+        ];
+
+        let found = null;
+        for (const c of candidates) {
+          // eslint-disable-next-line no-await-in-loop
+          const data = await tryFetch(c);
+          if (!data) continue;
+
+          const list = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data?.data)
+            ? data.data
+            : [];
+
+          if (list.length) {
+            found = list;
+            break;
+          }
+        }
+
+        if (found) {
+          setSpeakingItems(found);
+        } else {
+          // no pasa nada, RolePlay podría cargar por su cuenta con actividadId
+          setSpeakingItems([]);
+        }
+      } catch (e) {
+        console.warn('No se pudieron cargar ítems de speaking:', e);
+        setSpeakingItems([]);
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+
+    loadItems();
+  }, [actividadId]);
+
+  const loading = loadingMeta || loadingItems;
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
@@ -107,7 +191,7 @@ const Speaking = () => {
           )}
 
           {!loading && !error && actividadId && (
-            <RolePlay actividadId={actividadId} items={speakingItems} />
+            <RolePlay actividadId={actividadId} items={speakingItems} meta={meta} />
           )}
         </div>
       </div>

@@ -6,6 +6,7 @@ const ACCESS_SECRET =
 
 // Verifica token y expone userId/rol en req
 export const verifyToken = (req, res, next) => {
+   console.log("📥 Headers recibidos:", req.headers);
   const auth = req.headers.authorization || "";
   const hasBearer = auth.startsWith("Bearer ");
 

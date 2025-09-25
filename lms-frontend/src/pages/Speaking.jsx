@@ -88,27 +88,30 @@ const Speaking = () => {
       const token = (localStorage.getItem('token') || localStorage.getItem('accessToken') || '').trim();
       if (!token) {
         console.warn('⚠️ No hay token al cargar ítems de speaking');
+        setLoadingItems(false);
         return;
       }
 
       const tryFetch = async (path) => {
         try {
           const res = await fetch(`${API_BASE_URL}${path}`, {
+            method: 'GET',
             headers: {
+              'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
             credentials: 'include',
           });
 
-          if (!res.ok) return null;
-
           const raw = await res.text();
-          if (!raw) return null;
 
-          const json = JSON.parse(raw);
-          return json;
+          if (!res.ok) {
+            throw new Error(`Error del servidor (${res.status}): ${raw}`);
+          }
+
+          return raw ? JSON.parse(raw) : null;
         } catch (err) {
-          console.warn(`⚠️ Fallo en fetch ${path}:`, err);
+          console.error(`❌ Error al obtener diálogo:`, err.message);
           return null;
         }
       };

@@ -33,8 +33,6 @@ import profesoresRoutes from "./routes/profesoresRoutes.js";
 import mensajesRoutes from "./routes/mensajesRoutes.js";
 import notificacionesRoutes from "./routes/notificacionesRoutes.js";
 
-
-
 // __dirname para ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,30 +47,34 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 
-// ✅ Archivos estáticos (estos deben ir antes de las rutas)
+// ✅ Archivos estáticos
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use("/api/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use(express.static(path.join(__dirname, "public")));
 
-// CORS solo en desarrollo
-if (!isProd) {
-  const allowedOrigins = [
-    "http://localhost:5173",
-    "http://86.109.171.91:5173",
-    "http://86.109.171.91:4173",
-    "http://86.109.171.91",
-  ];
-  app.use(
-    cors({
-      origin(origin, cb) {
-        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error("Not allowed by CORS"));
-      },
-      credentials: true,
-    })
-  );
-  app.options("*", (_req, res) => res.sendStatus(204));
-}
+// ✅ CORS para desarrollo y producción
+const allowedOrigins = isProd
+  ? ["https://nuevo.campusvirtualhometeacher.es"]
+  : [
+      "http://localhost:5173",
+      "http://86.109.171.91:5173",
+      "http://86.109.171.91:4173",
+      "http://86.109.171.91",
+    ];
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
+
+app.options("*", cors()); // preflight requests
 
 // =========================
 //       RUTAS API
@@ -94,6 +96,7 @@ app.use("/api/alumnos", verifyToken, alumnosRoutes);
 app.use("/api/renovaciones", verifyToken, renovacionesRoutes);
 app.use("/api/progress", verifyToken, progressRoutes);
 app.use("/api/stats", verifyToken, statsRoutes);
+app.use("/api/process", verifyToken, processRoutes);
 app.use("/api/users", verifyToken, usersRoutes);
 app.use("/api/fundae", verifyToken, fundaeRoutes);
 app.use("/api/speaking", verifyToken, speakingRoutes);
@@ -101,10 +104,8 @@ app.use("/api/actividades", verifyToken, actividadesRoutes);
 app.use("/api/productive-skills", verifyToken, productiveSkillsRoutes);
 app.use("/api/testnivel", verifyToken, testnivelRoutes);
 app.use("/api/profesores", verifyToken, profesoresRoutes);
-app.use("/api/mensajes", verifyToken, logAuth, mensajesRoutes); 
+app.use("/api/mensajes", verifyToken, logAuth, mensajesRoutes);
 app.use("/api/notificaciones", verifyToken, notificacionesRoutes);
-
-
 
 // Error handler genérico
 app.use((err, req, res, next) => {

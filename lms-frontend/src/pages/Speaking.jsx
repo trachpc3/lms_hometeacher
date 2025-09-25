@@ -18,15 +18,22 @@ const Speaking = () => {
   const [loadingItems, setLoadingItems] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
+  // 🔁 Cargar metadatos de la actividad
   useEffect(() => {
     const loadSpeakingMeta = async () => {
-      try {
-        setLoadingMeta(true);
-        setError(null);
+      setLoadingMeta(true);
+      setError(null);
 
-        const token =
-          localStorage.getItem('token') || localStorage.getItem('accessToken');
-        if (!token) throw new Error('No hay token. Inicia sesión.');
+      const token = (localStorage.getItem('token') || localStorage.getItem('accessToken') || '').trim();
+
+      if (!token) {
+        setError('No se encontró token válido. Inicia sesión nuevamente.');
+        setLoadingMeta(false);
+        return;
+      }
+
+      try {
+        console.log("🔑 TOKEN usado:", token);
 
         const res = await fetch(
           `${API_BASE_URL}/actividades/unidad/${unitId}/speaking`,
@@ -41,17 +48,18 @@ const Speaking = () => {
         );
 
         const raw = await res.text();
-        if (!res.ok) throw new Error(`Error ${res.status}: ${raw || 'sin cuerpo'}`);
+        console.log("📡 Respuesta cruda:", raw);
+
+        if (!res.ok) {
+          throw new Error(`Error ${res.status}: ${raw || 'sin cuerpo'}`);
+        }
 
         const json = raw ? JSON.parse(raw) : null;
 
-        // ✅ Puede venir objeto o array
-        let actividad = null;
-        if (Array.isArray(json)) {
-          actividad = json[0] || null;
-        } else if (json && typeof json === 'object') {
-          actividad = json;
-        }
+        // ✅ Puede venir como array u objeto
+        let actividad = Array.isArray(json) ? json[0] : json;
+
+        console.log("🧠 Actividad recibida:", actividad);
 
         if (!actividad?.id) {
           throw new Error('No hay actividad Speaking para esta unidad.');
@@ -70,45 +78,53 @@ const Speaking = () => {
     loadSpeakingMeta();
   }, [unitId]);
 
-  // (Opcional) intenta traer los ítems de la actividad si RolePlay no los carga solo
+  // 🔁 Cargar ítems si no los trae el componente RolePlay
   useEffect(() => {
     const loadItems = async () => {
       if (!actividadId) return;
 
-      try {
-        setLoadingItems(true);
+      setLoadingItems(true);
 
-        const token =
-          localStorage.getItem('token') || localStorage.getItem('accessToken');
-        if (!token) return;
+      const token = (localStorage.getItem('token') || localStorage.getItem('accessToken') || '').trim();
+      if (!token) {
+        console.warn('⚠️ No hay token al cargar ítems de speaking');
+        return;
+      }
 
-        // probamos varias rutas típicas
-        const tryFetch = async (path) => {
-          const r = await fetch(`${API_BASE_URL}${path}`, {
-            headers: { Authorization: `Bearer ${token}` },
+      const tryFetch = async (path) => {
+        try {
+          const res = await fetch(`${API_BASE_URL}${path}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
             credentials: 'include',
           });
-          if (!r.ok) return null;
-          const t = await r.text();
-          if (!t) return null;
-          try {
-            return JSON.parse(t);
-          } catch {
-            return null;
-          }
-        };
 
-        const candidates = [
-          `/speaking/${actividadId}`,        // puede devolver array o {items:[...]}
-          `/speaking/${actividadId}/items`,  // puede devolver array o {items:[...]}
-        ];
+          if (!res.ok) return null;
 
-        let found = null;
-        for (const c of candidates) {
-          // eslint-disable-next-line no-await-in-loop
-          const data = await tryFetch(c);
-          if (!data) continue;
+          const raw = await res.text();
+          if (!raw) return null;
 
+          const json = JSON.parse(raw);
+          return json;
+        } catch (err) {
+          console.warn(`⚠️ Fallo en fetch ${path}:`, err);
+          return null;
+        }
+      };
+
+      const candidates = [
+        `/speaking/${actividadId}`,
+        `/speaking/${actividadId}/items`,
+      ];
+
+      let found = null;
+
+      for (const path of candidates) {
+        // eslint-disable-next-line no-await-in-loop
+        const data = await tryFetch(path);
+
+        if (data) {
           const list = Array.isArray(data)
             ? data
             : Array.isArray(data?.items)
@@ -122,19 +138,12 @@ const Speaking = () => {
             break;
           }
         }
-
-        if (found) {
-          setSpeakingItems(found);
-        } else {
-          // no pasa nada, RolePlay podría cargar por su cuenta con actividadId
-          setSpeakingItems([]);
-        }
-      } catch (e) {
-        console.warn('No se pudieron cargar ítems de speaking:', e);
-        setSpeakingItems([]);
-      } finally {
-        setLoadingItems(false);
       }
+
+      console.log("📦 Ítems de speaking cargados:", found);
+
+      setSpeakingItems(found || []);
+      setLoadingItems(false);
     };
 
     loadItems();
@@ -177,7 +186,9 @@ const Speaking = () => {
 
       <div className="flex-1 flex items-center justify-center px-4 py-6">
         <div className="bg-white shadow-lg rounded-xl p-6 max-w-4xl w-full border">
-          {loading && <p className="text-center text-gray-500">Cargando actividad...</p>}
+          {loading && (
+            <p className="text-center text-gray-500">Cargando actividad...</p>
+          )}
 
           {!loading && error && (
             <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700">

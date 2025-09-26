@@ -4,9 +4,13 @@ import { useCountdown24h } from "../../hooks/useCountdown24h";
 
 const CountdownBanner = ({ startTime }) => {
   const remainingTime = useCountdown24h(startTime);
-  const [notified, setNotified] = useState(() => localStorage.getItem("demoExpiredNotified") === "true");
+  const [notified, setNotified] = useState(
+    () => localStorage.getItem("demoExpiredNotified") === "true"
+  );
 
   const user = JSON.parse(localStorage.getItem("user"));
+
+  // 🚫 No mostramos nada si no hay usuario o si no está en estado demo
   if (!user || user.estado_formacion !== "demo") return null;
 
   useEffect(() => {

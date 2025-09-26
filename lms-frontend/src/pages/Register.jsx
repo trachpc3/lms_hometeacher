@@ -5,12 +5,13 @@ import logo from "../assets/loog.png";
 import { CheckCircle, GraduationCap, CreditCard } from "lucide-react";
 import toast from "react-hot-toast";
 
-const cursos = [
-  "A1 Beginner",
-  "A2 Elementary",
-  "B1 Intermediate",
-  "B2 Upper Intermediate",
-  "C1 Advanced",
+const niveles = [
+  "Beginners",
+  "Lower Intermediate",
+  "Intermediate",
+  "Upper Intermediate",
+  "Advanced",
+  "Business",
 ];
 
 const Register = () => {

@@ -1,39 +1,30 @@
-import { Router } from "express";
+// routes/authRoutes.js
+import express from "express";
 import {
   login,
   loginGoogle,
   loginMeta,
+  refresh,
+  logout,
   forgotPassword,
   resetPassword,
   register,
-  refresh,
-  logout,
 } from "../controllers/authController.js";
 
-const router = Router();
+const router = express.Router();
 
-// 🔐 Login tradicional
+// === AUTENTICACIÓN ===
 router.post("/login", login);
-
-// 🔐 Login con Google
 router.post("/google", loginGoogle);
-
-// 🔐 Login con Facebook (Meta)
 router.post("/meta", loginMeta);
+router.post("/register", register);
 
-// 🔁 Refresh Access Token (usa cookie httpOnly)
+// === REFRESH & LOGOUT ===
 router.post("/refresh", refresh);
-
-// 🚪 Logout (borra cookie refresh)
 router.post("/logout", logout);
 
-// 🆘 Recuperar contraseña
+// === RECUPERACIÓN DE CONTRASEÑA ===
 router.post("/forgot-password", forgotPassword);
-
-// 🔄 Resetear contraseña
 router.post("/reset-password", resetPassword);
-
-// 📝 Registro
-router.post("/register", register);
 
 export default router;

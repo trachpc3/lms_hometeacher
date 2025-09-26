@@ -40,7 +40,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
-// Trust proxy (para cookies Secure con HTTPS detrás de proxy)
+// Trust proxy (necesario si usas proxy/reverse proxy tipo Nginx con HTTPS)
 app.set("trust proxy", 1);
 
 // Parsers
@@ -52,7 +52,7 @@ app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use("/api/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ CORS para desarrollo y producción
+// ✅ Configuración CORS
 const allowedOrigins = isProd
   ? ["https://nuevo.campusvirtualhometeacher.es"]
   : [
@@ -74,7 +74,7 @@ app.use(
   })
 );
 
-app.options("*", cors()); // preflight requests
+app.options("*", cors()); // Preflight
 
 // =========================
 //       RUTAS API

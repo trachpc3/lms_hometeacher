@@ -107,19 +107,19 @@ app.use("/api/profesores", verifyToken, profesoresRoutes);
 app.use("/api/mensajes", verifyToken, logAuth, mensajesRoutes);
 app.use("/api/notificaciones", verifyToken, notificacionesRoutes);
 
-// ✅ Catch-all para frontend (React Router)
+// Error handler genérico
+app.use((err, req, res, next) => {
+  console.error("💥 Error interno:", err);
+  res.status(500).json({ error: "Error interno del servidor" });
+});
+
+// ✅ Catch-all para frontend (React Router) → siempre al final
 app.get("*", (req, res) => {
   if (!req.path.startsWith("/api")) {
     res.sendFile(path.join(__dirname, "public", "index.html"));
   } else {
     res.status(404).json({ message: "Ruta no encontrada" });
   }
-});
-
-// Error handler genérico
-app.use((err, req, res, next) => {
-  console.error("💥 Error interno:", err);
-  res.status(500).json({ error: "Error interno del servidor" });
 });
 
 // Log de rutas (solo en desarrollo)

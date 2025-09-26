@@ -7,7 +7,7 @@ import Layout from "@/layouts/Layout";
 import ProfesorLayout from "@/layouts/ProfesorLayout";
 
 // Páginas (contenido)
-import HomeContent from "./components/HomeContent";          // 👈 solo contenido del curso
+import HomeContent from "./components/HomeContent";        
 import DashboardProfesor from "./pages/HomeProfesor";
 import Alumnos from "./pages/Alumnos";
 import Login from "./pages/Login";
@@ -70,6 +70,7 @@ const router = createBrowserRouter(
   [
     // Públicas
     { path: "/", element: <Login /> },
+    { path: "/register", element: <Register /> },   // ✅ AÑADIDA
     { path: "/pricing", element: <Pricing /> },
     { path: "/test-nivel", element: <TestNivel /> },
 
@@ -87,7 +88,7 @@ const router = createBrowserRouter(
       path: "/home",
       element: <Layout />, // pinta Header + Sidebar de alumno
       children: [
-        { index: true, element: <HomeContent /> }, // 👈 solo el contenido, sin duplicar layout
+        { index: true, element: <HomeContent /> },
         { path: "mensajes", element: <Mensajes /> },
       ],
     },
@@ -99,7 +100,7 @@ const router = createBrowserRouter(
       children: [
         { index: true, element: <DashboardProfesor /> },
         { path: "alumnos", element: <Alumnos /> },
-        { path: "alumnos/:id", element: <ProfileAlumno /> }, // ver perfil de un alumno desde el panel del profe
+        { path: "alumnos/:id", element: <ProfileAlumno /> },
         { path: "renovaciones", element: <Renovaciones /> },
         { path: "mensajes", element: <Mensajes /> },
         { path: "curso", element: <HomeContent /> },

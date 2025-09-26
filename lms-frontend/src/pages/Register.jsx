@@ -165,17 +165,18 @@ const Register = () => {
               required
             />
 
-            <select
-              value={curso}
-              onChange={(e) => setCurso(e.target.value)}
-              className="w-full p-3 border rounded-md mb-6 focus:ring-2 focus:ring-blue-500"
-            >
-              {cursos.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+          <select
+  value={curso}
+  onChange={(e) => setCurso(e.target.value)}
+  className="w-full p-3 border rounded-md mb-6 focus:ring-2 focus:ring-blue-500"
+>
+  {niveles.map((nivel) => (
+    <option key={nivel} value={nivel}>
+      {nivel}
+    </option>
+  ))}
+</select>
+
 
             <button
               type="submit"

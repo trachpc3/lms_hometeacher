@@ -34,9 +34,11 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentLevel, onLevelChange 
                     currentLevel === level.id ? "bg-blue-500 text-white" : "bg-gray-100 hover:bg-gray-200"
                   }`}
                   onClick={() => {
-                    console.log("📌 Nivel seleccionado:", level.id);
-                    onLevelChange(level.id);
-                  }}
+  console.log("📌 Nivel seleccionado:", level.id);
+  onLevelChange(level.id);
+  navigate("/home"); 
+}}
+
                   disabled={false}
                 >
                   {isUnlocked ? (

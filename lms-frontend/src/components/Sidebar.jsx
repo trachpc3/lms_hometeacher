@@ -3,19 +3,12 @@ import { Unlock, Lock, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/loog.png";
 import { levels } from "../data/levelsData";
-import { useUser } from "../context/UserContext";
+import { useUser } from "../context/UserContext"; // ✅
 
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentLevel, onLevelChange }) => {
   const navigate = useNavigate();
-  const { user } = useUser();
-
+  const { user } = useUser(); // ✅
   const isAdmin = user?.rol === "admin" || user?.rol === "administrador";
-
-  // 📌 Demo o pendiente → solo desbloquear demo
-  const isDemo = user?.estado_formacion === "demo" || user?.curso_matriculado === "pendiente";
-
-  // 📌 Si el usuario ya está matriculado → se desbloquea solo su curso/nivel
-  const cursoMatriculado = user?.curso_matriculado;
 
   return (
     <aside
@@ -37,17 +30,9 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentLevel, onLevelChange 
           <h2 className="text-lg font-semibold mb-3">Niveles</h2>
           <div className="space-y-2">
             {levels.map((level) => {
-              let isUnlocked = false;
-
-              if (isAdmin) {
-                isUnlocked = true;
-              } else if (isDemo) {
-                // Solo desbloquear demo
-                isUnlocked = level.id === "demo";
-              } else {
-                // Alumno matriculado → desbloquear solo su curso/nivel
-                isUnlocked = cursoMatriculado === level.id;
-              }
+              // 🔓 desbloqueado si es admin o si coincide con curso_matriculado del usuario
+              const isUnlocked =
+                isAdmin || level.name === user?.curso_matriculado;
 
               return (
                 <button
@@ -59,6 +44,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentLevel, onLevelChange 
                   }`}
                   onClick={() => {
                     if (isUnlocked) {
+                      console.log("📌 Nivel seleccionado:", level.id);
                       onLevelChange(level.id);
                       navigate("/home");
                     }

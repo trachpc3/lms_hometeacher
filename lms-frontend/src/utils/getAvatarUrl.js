@@ -1,8 +1,10 @@
 // src/utils/getAvatarUrl.js
 import { API_BASE_URL } from "@/config";
+// src/utils/getAvatarUrl.js
 
 const ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
-const DEFAULT = "/assets/img/default-profile.png";
+const DEFAULT = "/assets/img/avatar-default.png";
+
 
 export function getAvatarUrl(imagen) {
   // 1) Si no hay imagen o es un marcador viejo → asset público

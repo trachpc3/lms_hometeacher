@@ -329,6 +329,7 @@ function formatearUsuario(user) {
     rol: user.rol,
     estado: user.estado,
     estado_formacion: user.estado_formacion,
+    curso_matriculado: user.curso_matriculado ?? "pendiente", // 👈 añadido
     fecha_registro: user.fecha_registro,
     imagen: imagenFinal,
   };

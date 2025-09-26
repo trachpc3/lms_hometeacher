@@ -1,3 +1,4 @@
+// controllers/authController.js
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import pool from "../models/db.js";
@@ -7,8 +8,8 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/
 const cookieBase = {
   httpOnly: true,
   sameSite: "lax",
-  secure: process.env.COOKIE_SECURE === "true", // en HTTPS => true
-  path: "/api/auth/refresh", // solo viaja al endpoint de refresh
+  secure: process.env.COOKIE_SECURE === "true", // true en producción con HTTPS
+  path: "/api/auth/refresh",
 };
 
 // === LOGIN TRADICIONAL ===
@@ -22,14 +23,14 @@ export const login = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE email = ? LIMIT 1",
+      "SELECT * FROM usuarios WHERE email = ? LIMIT 1",
       [email]
     );
     if (rows.length === 0) return res.status(401).json({ message: "Credenciales inválidas" });
 
     const user = rows[0];
 
-    // no permitir acceso si no está activo
+    // No permitir acceso si no está activo
     if (user.estado !== "activo") {
       return res.status(403).json({ message: `Usuario ${user.estado}. Contacta con soporte.` });
     }
@@ -37,7 +38,7 @@ export const login = async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) return res.status(401).json({ message: "Credenciales inválidas" });
 
-    // 🧹 Si es demo, limpiar sus conversaciones previas
+    // 🧹 Si es demo → limpiar sus conversaciones
     if (user.estado_formacion === "demo") {
       console.log("🧹 Limpiando conversaciones para usuario demo:", user.email);
 
@@ -49,10 +50,7 @@ export const login = async (req, res) => {
         [user.id]
       );
 
-      await pool.query(
-        `DELETE FROM conversation_participants WHERE user_id = ?`,
-        [user.id]
-      );
+      await pool.query(`DELETE FROM conversation_participants WHERE user_id = ?`, [user.id]);
 
       await pool.query(
         `DELETE FROM conversations 
@@ -62,7 +60,7 @@ export const login = async (req, res) => {
 
     await registrarLogin(user.id, req);
 
-    const accessToken = signAccessToken(user);  // tu helper actual
+    const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
 
     res.cookie("refreshToken", refreshToken, {
@@ -141,10 +139,7 @@ export const refresh = async (req, res) => {
 
     const payload = verifyRefreshToken(rt);
 
-    const [rows] = await pool.query(
-      "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE id = ? LIMIT 1",
-      [payload.sub]
-    );
+    const [rows] = await pool.query("SELECT * FROM usuarios WHERE id = ? LIMIT 1", [payload.sub]);
     const user = rows[0];
     if (!user || user.estado !== "activo") {
       return res.status(401).json({ message: "Usuario no válido" });
@@ -173,20 +168,18 @@ export const forgotPassword = async (req, res) => {
   if (!email) return res.status(400).json({ message: "Email requerido" });
 
   try {
-    const [rows] = await pool.query(
-      "SELECT id, email FROM usuarios WHERE email = ? LIMIT 1",
-      [email]
-    );
+    const [rows] = await pool.query("SELECT id, email FROM usuarios WHERE email = ? LIMIT 1", [email]);
     const user = rows[0];
     if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
 
     const token = crypto.randomBytes(32).toString("hex");
     const expires = Date.now() + 15 * 60 * 1000;
 
-    await pool.query(
-      "UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?",
-      [token, expires, user.id]
-    );
+    await pool.query("UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?", [
+      token,
+      expires,
+      user.id,
+    ]);
 
     const resetUrl = `${process.env.PUBLIC_URL || "http://localhost:5173"}/restablecer-contraseña?token=${token}`;
     console.log("📧 Enlace de recuperación:", resetUrl);
@@ -206,10 +199,9 @@ export const resetPassword = async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query(
-      "SELECT id, reset_token_expira FROM usuarios WHERE reset_token = ? LIMIT 1",
-      [token]
-    );
+    const [rows] = await pool.query("SELECT id, reset_token_expira FROM usuarios WHERE reset_token = ? LIMIT 1", [
+      token,
+    ]);
     const user = rows[0];
     if (!user) return res.status(400).json({ message: "Token inválido o inexistente" });
 
@@ -267,14 +259,11 @@ export const register = async (req, res) => {
 
 // === HELPERS ===
 const buscarOCrearUsuario = async ({ email, nombre, imagen }) => {
-  const [rows] = await pool.query(
-    "SELECT id, nombre, apellidos, email, password, rol, estado, fecha_registro, imagen, estado_formacion FROM usuarios WHERE email = ? LIMIT 1",
-    [email]
-  );
+  const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ? LIMIT 1", [email]);
   if (rows.length > 0) return rows[0];
 
   const [result] = await pool.query(
-    "INSERT INTO usuarios (nombre, email, imagen, rol, estado, metodo_registro) VALUES (?, ?, ?, 'estudiante', 'activo', 'google')",
+    "INSERT INTO usuarios (nombre, email, imagen, rol, estado, metodo_registro, estado_formacion) VALUES (?, ?, ?, 'estudiante', 'activo', 'google', 'demo')",
     [nombre, email, imagen || "/mine.png"]
   );
 

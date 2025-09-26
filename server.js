@@ -40,7 +40,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
-// Trust proxy (necesario si usas proxy/reverse proxy tipo Nginx con HTTPS)
+// Trust proxy (para cookies Secure con HTTPS detrás de proxy)
 app.set("trust proxy", 1);
 
 // Parsers
@@ -52,7 +52,7 @@ app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use("/api/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ Configuración CORS
+// ✅ CORS para desarrollo y producción
 const allowedOrigins = isProd
   ? ["https://nuevo.campusvirtualhometeacher.es"]
   : [
@@ -74,7 +74,7 @@ app.use(
   })
 );
 
-app.options("*", cors()); // Preflight
+app.options("*", cors()); // preflight requests
 
 // =========================
 //       RUTAS API
@@ -106,6 +106,15 @@ app.use("/api/testnivel", verifyToken, testnivelRoutes);
 app.use("/api/profesores", verifyToken, profesoresRoutes);
 app.use("/api/mensajes", verifyToken, logAuth, mensajesRoutes);
 app.use("/api/notificaciones", verifyToken, notificacionesRoutes);
+
+// ✅ Catch-all para frontend (React Router)
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/api")) {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+  } else {
+    res.status(404).json({ message: "Ruta no encontrada" });
+  }
+});
 
 // Error handler genérico
 app.use((err, req, res, next) => {

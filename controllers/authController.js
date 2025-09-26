@@ -1,4 +1,3 @@
-// controllers/authController.js
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import pool from "../models/db.js";
@@ -37,6 +36,29 @@ export const login = async (req, res) => {
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) return res.status(401).json({ message: "Credenciales inválidas" });
+
+    // 🧹 Si es demo, limpiar sus conversaciones previas
+    if (user.estado_formacion === "demo") {
+      console.log("🧹 Limpiando conversaciones para usuario demo:", user.email);
+
+      await pool.query(
+        `DELETE m FROM messages m
+         JOIN conversations c ON c.id = m.conversation_id
+         JOIN conversation_participants cp ON cp.conversation_id = c.id
+         WHERE cp.user_id = ?`,
+        [user.id]
+      );
+
+      await pool.query(
+        `DELETE FROM conversation_participants WHERE user_id = ?`,
+        [user.id]
+      );
+
+      await pool.query(
+        `DELETE FROM conversations 
+         WHERE id NOT IN (SELECT conversation_id FROM conversation_participants)`
+      );
+    }
 
     await registrarLogin(user.id, req);
 
@@ -166,7 +188,6 @@ export const forgotPassword = async (req, res) => {
       [token, expires, user.id]
     );
 
-    // TODO: envía email real
     const resetUrl = `${process.env.PUBLIC_URL || "http://localhost:5173"}/restablecer-contraseña?token=${token}`;
     console.log("📧 Enlace de recuperación:", resetUrl);
 
@@ -273,9 +294,8 @@ const buscarOCrearUsuario = async ({ email, nombre, imagen }) => {
 const registrarLogin = async (usuarioId, req) => {
   const ip = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "Desconocido";
   const userAgent = req.headers["user-agent"] || "Desconocido";
-  const dispositivo = String(userAgent).slice(0, 191); // truncado
+  const dispositivo = String(userAgent).slice(0, 191);
 
-  // si no tienes tabla `logins`, comenta esta línea
   await pool.query("INSERT INTO logins (usuario_id, ip, dispositivo) VALUES (?, ?, ?)", [
     usuarioId,
     ip,
@@ -297,11 +317,6 @@ function msToNumber(str) {
 }
 
 function formatearUsuario(user) {
-  // Normaliza imagen:
-  // - null o default antiguos  -> asset público del frontend
-  // - http(s)                  -> respetar
-  // - /uploads/...             -> respetar
-  // - nombre suelto            -> /uploads/avatars/<nombre>
   const raw = user?.imagen ? String(user.imagen).trim() : "";
 
   let imagenFinal;
@@ -310,11 +325,10 @@ function formatearUsuario(user) {
   } else if (raw.startsWith("http://") || raw.startsWith("https://")) {
     imagenFinal = raw;
   } else if (raw.startsWith("/assets/")) {
-    imagenFinal = raw; // ya es asset público del frontend
+    imagenFinal = raw;
   } else if (raw.startsWith("/uploads/")) {
-    imagenFinal = raw; // ya es ruta pública del backend
+    imagenFinal = raw;
   } else {
-    // nombre suelto como "user_10.png" -> a carpeta avatars
     imagenFinal = `/uploads/avatars/${raw.replace(/^\/+/, "")}`;
   }
 

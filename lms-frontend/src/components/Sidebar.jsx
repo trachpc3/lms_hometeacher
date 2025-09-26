@@ -25,31 +25,36 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentLevel, onLevelChange 
           <h2 className="text-lg font-semibold mb-3">Niveles</h2>
           <div className="space-y-2">
             {levels.map((level) => {
-              const isUnlocked = isAdmin || level.unlocked;
+  const isUnlocked =
+    isAdmin || user?.curso_matriculado?.toLowerCase() === level.name.toLowerCase();
 
-              return (
-                <button
-                  key={level.id}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg font-semibold shadow-md ${
-                    currentLevel === level.id ? "bg-blue-500 text-white" : "bg-gray-100 hover:bg-gray-200"
-                  }`}
-                  onClick={() => {
-  console.log("📌 Nivel seleccionado:", level.id);
-  onLevelChange(level.id);
-  navigate("/home"); 
-}}
+  return (
+    <button
+      key={level.id}
+      className={`w-full flex items-center gap-3 p-3 rounded-lg font-semibold shadow-md ${
+        currentLevel === level.id
+          ? "bg-blue-500 text-white"
+          : "bg-gray-100 hover:bg-gray-200"
+      }`}
+      onClick={() => {
+        if (isUnlocked) {
+          console.log("📌 Nivel seleccionado:", level.id);
+          onLevelChange(level.id);
+          navigate("/home");
+        }
+      }}
+      disabled={!isUnlocked && !isAdmin}
+    >
+      {isUnlocked ? (
+        <Unlock className="text-green-500" size={20} />
+      ) : (
+        <Lock className="text-red-500" size={20} />
+      )}
+      {level.name}
+    </button>
+  );
+})}
 
-                  disabled={false}
-                >
-                  {isUnlocked ? (
-                    <Unlock className="text-green-500" size={20} />
-                  ) : (
-                    <Lock className="text-red-500" size={20} />
-                  )}
-                  {level.name}
-                </button>
-              );
-            })}
           </div>
         </div>
 

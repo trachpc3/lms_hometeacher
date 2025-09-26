@@ -10,6 +10,7 @@ import { verifyToken, logAuth } from "./middlewares/authMiddleware.js";
 
 // Rutas
 import authRoutes from "./routes/authRoutes.js";
+import nivelesRoutes from "./routes/nivelesRoutes.js";
 import unidadesRoutes from "./routes/unidadesRoutes.js";
 import sentencesRoutes from "./routes/sentencesRoutes.js";
 import situationsRoutes from "./routes/situationsRoutes.js";
@@ -82,6 +83,7 @@ app.options("*", cors()); // preflight requests
 
 // Público (auth: login, google, refresh, logout, forgot/reset, register)
 app.use("/api/auth", authRoutes);
+app.use("/api/niveles", nivelesRoutes); 
 
 // Protegidas (requieren JWT - access token)
 app.use("/api/unidades", verifyToken, unidadesRoutes);

@@ -1,34 +1,42 @@
-import { API_BASE_URL } from '../config';
-import { useState } from "react";
+import { API_BASE_URL } from "../config";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/loog.png";
 import { CheckCircle, GraduationCap, CreditCard } from "lucide-react";
 import toast from "react-hot-toast";
 
-const niveles = [
-  "Beginners",
-  "Lower Intermediate",
-  "Intermediate",
-  "Upper Intermediate",
-  "Advanced",
-  "Business",
-];
-
 const Register = () => {
   const navigate = useNavigate();
+
+  const [niveles, setNiveles] = useState([]);   // 👈 viene de la BD
+  const [nivelId, setNivelId] = useState("");   // 👈 seleccion actual
+
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
-  const [curso, setCurso] = useState(cursos[0]);
   const [registroExitoso, setRegistroExitoso] = useState(false);
+
+  // ✅ Cargar niveles desde el backend al montar
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/niveles`)
+      .then((res) => res.json())
+      .then((data) => {
+        setNiveles(data);
+        if (data.length > 0) setNivelId(data[0].id); // preseleccionar el primero
+      })
+      .catch((err) => {
+        console.error("Error cargando niveles:", err);
+        toast.error("No se pudieron cargar los niveles");
+      });
+  }, []);
 
   const validarTelefono = (telefono) => /^[0-9\s\+\-]{7,15}$/.test(telefono);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!nombre || !apellidos || !email || !telefono || !curso) {
+    if (!nombre || !apellidos || !email || !telefono || !nivelId) {
       return toast.error("Completa todos los campos");
     }
 
@@ -45,7 +53,7 @@ const Register = () => {
           apellidos,
           email,
           telefono,
-          curso_matriculado: curso,
+          nivel_id: nivelId,   // 👈 en vez de curso_matriculado
         }),
       });
 
@@ -54,30 +62,11 @@ const Register = () => {
 
       setRegistroExitoso(true);
       toast.success("Registro exitoso 🎉");
-
-      const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password: "Hometeacher",
-        }),
-      });
-
-      const loginData = await loginRes.json();
-      if (!loginRes.ok) throw new Error(loginData.message || "Error al iniciar sesión");
-
-      localStorage.setItem("token", loginData.token);
-      localStorage.setItem("user", JSON.stringify(loginData.user));
-
-      toast.success("Acceso al campus demo habilitado");
     } catch (err) {
       console.error(err);
       toast.error(err.message);
     }
   };
-
-  const irACampusDemo = () => navigate("/home");
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
@@ -92,91 +81,22 @@ const Register = () => {
           Registro de Demo
         </h2>
 
-        {registroExitoso ? (
-          <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4 text-center animate-fade-in">
-            <CheckCircle className="text-green-600 w-10 h-10 mx-auto mb-2" />
-            <p className="text-green-700 font-semibold">
-              ¡Registro exitoso, {nombre}!
-            </p>
-            <p className="text-sm text-gray-700 mt-2">
-  ✅ Bienvenid@, estás conectad@ como <strong>alumn@ de prueba</strong>.
-</p>
-
-{/*
-<p className="text-sm text-gray-700 mt-2">
-  🎁 Si realizas la matrícula en las próximas 24 horas, obtendrás un{" "}
-  <strong>50% de descuento</strong>.
-</p>
-*/}
-
-            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
-              <button
-                onClick={irACampusDemo}
-                className="flex items-center justify-center gap-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-              >
-                <GraduationCap className="w-4 h-4" />
-                Entrar al Campus Demo
-              </button>
-
-              <Link
-                to="/pricing"
-                className="flex items-center justify-center gap-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-              >
-                <CreditCard className="w-4 h-4" />
-                Ver Planes de Pago
-              </Link>
-            </div>
-          </div>
-        ) : (
+        {!registroExitoso ? (
           <form onSubmit={handleSubmit}>
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full p-3 border rounded-md mb-4 focus:ring-2 focus:ring-blue-500"
-              required
-            />
+            {/* ...inputs nombre, apellidos, email, telefono... */}
 
-            <input
-              type="text"
-              placeholder="Apellidos"
-              value={apellidos}
-              onChange={(e) => setApellidos(e.target.value)}
-              className="w-full p-3 border rounded-md mb-4 focus:ring-2 focus:ring-blue-500"
-              required
-            />
-
-            <input
-              type="email"
-              placeholder="Correo electrónico"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border rounded-md mb-4 focus:ring-2 focus:ring-blue-500"
-              required
-            />
-
-            <input
-              type="tel"
-              placeholder="Teléfono"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              className="w-full p-3 border rounded-md mb-4 focus:ring-2 focus:ring-blue-500"
-              required
-            />
-
-          <select
-  value={curso}
-  onChange={(e) => setCurso(e.target.value)}
-  className="w-full p-3 border rounded-md mb-6 focus:ring-2 focus:ring-blue-500"
->
-  {niveles.map((nivel) => (
-    <option key={nivel} value={nivel}>
-      {nivel}
-    </option>
-  ))}
-</select>
-
+            {/* ✅ Select dinámico desde BD */}
+            <select
+              value={nivelId}
+              onChange={(e) => setNivelId(e.target.value)}
+              className="w-full p-3 border rounded-md mb-6 focus:ring-2 focus:ring-blue-500"
+            >
+              {niveles.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.nombre}
+                </option>
+              ))}
+            </select>
 
             <button
               type="submit"
@@ -184,14 +104,9 @@ const Register = () => {
             >
               Crear cuenta demo
             </button>
-
-            <p className="text-sm text-center text-gray-600 mt-4">
-              ¿Ya tienes una cuenta?{" "}
-              <Link to="/" className="text-blue-500 hover:underline">
-                Inicia sesión
-              </Link>
-            </p>
           </form>
+        ) : (
+          <p>✅ Registro exitoso...</p>
         )}
       </div>
     </div>

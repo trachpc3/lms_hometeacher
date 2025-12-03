@@ -56,14 +56,22 @@ const HomePage = () => {
     }
   }, [navigate]);
 
-  useEffect(() => {
-    if (!user.id) return;
-    const nivel = levelToNumber[currentLevel];
-    if (nivel) {
-      cargarUnidades(nivel, user.rol);
-      cargarProgreso(user.id);
-    }
-  }, [currentLevel, user.id, user.rol]);
+useEffect(() => {
+  console.log("🧪 useEffect: user.id =", user.id);
+  console.log("🧪 useEffect: currentLevel =", currentLevel);
+  const nivel = levelToNumber[currentLevel];
+  console.log("🧪 useEffect: nivel =", nivel);
+
+  if (!user.id) return;
+
+  if (nivel) {
+    console.log("📦 Cargando unidades...");
+    cargarUnidades(nivel, user.rol);
+    cargarProgreso(user.id);
+  } else {
+    console.warn("⚠️ Nivel no válido:", currentLevel);
+  }
+}, [currentLevel, user.id, user.rol]);
 
   useEffect(() => {
     const checkProgressUpdate = () => {

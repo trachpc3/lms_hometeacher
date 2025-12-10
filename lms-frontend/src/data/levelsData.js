@@ -1,9 +1,10 @@
 // src/data/levelsData.js
 export const levels = [
-  { id: "beginners", name: "Beginners" },
-  { id: "lower-intermediate", name: "Lower Intermediate" },
-  { id: "intermediate", name: "Intermediate" },
-  { id: "upper-intermediate", name: "Upper Intermediate" },
-  { id: "advanced", name: "Advanced" },
-  { id: "business", name: "Business" },
+  { id: "Beginners", name: "Beginners" },
+  { id: "Lower", name: "Lower Intermediate" },
+  { id: "Intermediate", name: "Intermediate" },
+  { id: "Upper", name: "Upper Intermediate" },
+  { id: "Advanced", name: "Advanced" },
+  { id: "Business", name: "Business" },
 ];
+

@@ -78,9 +78,8 @@ export default function Pricing() {
         <h1 className="text-4xl font-bold mb-4 text-gray-900">
           Elige tu nivel y empieza hoy mismo
         </h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Accede al contenido completo de tu nivel, con tutores disponibles, ejercicios interactivos y seguimiento personalizado.
-        </p>
+        <br></br>
+        <br></br>
       </section>
 
       {/* Pricing Cards */}

@@ -1,5 +1,5 @@
 // src/pages/Home.jsx
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
 import { Lock, Unlock, Menu } from "lucide-react";
 import toast from "react-hot-toast";
@@ -15,13 +15,14 @@ import { fetchUnits } from "@/services/unitsService";
 import { levels } from "@/data/levelsData";
 import { fetchProgress } from "@/services/progressService";
 
+// ✅ CORREGIDO: usar los IDs minúscula del nivel (coinciden con levelsData.js)
 const levelToNumber = {
-  Beginners: 1,
-  Lower: 2,
-  Intermediate: 3,
-  Upper: 4,
-  Advanced: 5,
-  Business: 6,
+  beginners: 1,
+  lower: 2,
+  intermediate: 3,
+  upper: 4,
+  advanced: 5,
+  business: 6,
 };
 
 const HomePage = () => {
@@ -51,27 +52,23 @@ const HomePage = () => {
     }
     setUser(userData);
 
-    if (userData.rol !== "profesor" && userData.metodo_registro === "manual" && userData.estado_formacion === "demo") {
+    if (
+      userData.rol !== "profesor" &&
+      userData.metodo_registro === "manual" &&
+      userData.estado_formacion === "demo"
+    ) {
       toast.success(`👋 Bienvenido/a ${userData.nombre}. Tienes 24h para aprovechar tu acceso demo`);
     }
   }, [navigate]);
 
-useEffect(() => {
-  console.log("🧪 useEffect: user.id =", user.id);
-  console.log("🧪 useEffect: currentLevel =", currentLevel);
-  const nivel = levelToNumber[currentLevel];
-  console.log("🧪 useEffect: nivel =", nivel);
+  useEffect(() => {
+    const nivel = levelToNumber[currentLevel];
+    if (!user.id || !nivel) return;
 
-  if (!user.id) return;
-
-  if (nivel) {
-    console.log("📦 Cargando unidades...");
+    console.log("📦 Cargando unidades para nivel:", currentLevel, "→ id:", nivel);
     cargarUnidades(nivel, user.rol);
     cargarProgreso(user.id);
-  } else {
-    console.warn("⚠️ Nivel no válido:", currentLevel);
-  }
-}, [currentLevel, user.id, user.rol]);
+  }, [currentLevel, user.id, user.rol]);
 
   useEffect(() => {
     const checkProgressUpdate = () => {
@@ -128,14 +125,11 @@ useEffect(() => {
     navigate("/");
   };
 
-  // ======= HEADER (uno u otro) =======
   const HeaderToUse = isProfesor ? HeaderProfesor : Header;
-  // ======= SIDEBAR (uno u otro) =======
   const SidebarToUse = isProfesor ? SidebarProfesor : Sidebar;
 
   return (
     <div className="flex h-screen overflow-hidden relative">
-      {/* Toggle sidebar (móvil) */}
       <button
         className="absolute top-4 left-4 z-50 bg-white border border-gray-300 rounded-md p-2 md:hidden"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -144,36 +138,26 @@ useEffect(() => {
         <Menu size={24} />
       </button>
 
-      {/* Sidebar: solo UNA, según rol */}
       <SidebarToUse
         ref={sidebarRef}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        {...(!isProfesor
-          ? { currentLevel, onLevelChange: handleLevelChange }
-          : {})}
+        {...(!isProfesor ? { currentLevel, onLevelChange: handleLevelChange } : {})}
       />
 
       <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
-        {/* Header fijo: solo UNO, según rol */}
         <div className="sticky top-0 z-40 bg-gray-50 shadow-md border-b border-gray-300">
           <HeaderToUse
             user={user}
             handleLogout={handleLogout}
             toggleSidebar={() => setIsSidebarOpen((v) => !v)}
-            // En HeaderProfesor estos props extra pintan los botones azules
-            {...(isProfesor ? { /* ya pinta Volver/Enviar aviso por defecto */ } : {})}
           />
         </div>
 
-        {/* Contenido */}
         <main ref={unitsGridRef} className="flex-1 p-6 overflow-y-auto bg-gray-100">
           {showDashboard ? (
             <>
-              {/* Banner demo SOLO para alumno */}
-{/* 
-{!isProfesor && user.estado_formacion === "demo" && <CountdownBanner />} 
-*/}
+              {/* {!isProfesor && user.estado_formacion === "demo" && <CountdownBanner />} */}
 
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-700">

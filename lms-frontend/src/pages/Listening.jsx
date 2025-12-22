@@ -64,8 +64,8 @@ const Listening = () => {
       return;
     }
 
-const fullUrl = `/uploads/listening/unit${unitId}/${filename}`;
-
+const fullUrl = `${API_BASE_URL}/uploads/listening/unit${unitId}/${filename}`;
+    
     console.log("🔊 Reproduciendo audio:", fullUrl);
 
     const audio = new Audio(encodeURI(fullUrl));
